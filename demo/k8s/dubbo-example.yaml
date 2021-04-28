@@ -1,0 +1,109 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dubbo-sample-provider-v1
+  labels:
+    app: dubbo-sample-provider
+spec:
+  selector:
+    matchLabels:
+      app: dubbo-sample-provider
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: dubbo-sample-provider
+        version: v1
+    spec:
+      containers:
+        - name: dubbo-sample-provider
+          image: aeraki/dubbo-sample-provider:v1
+          imagePullPolicy: Always
+          env:
+            - name: ZK_ADDR
+              value: zookeeper:2181
+            - name: AERAKI_META_APP_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: AERAKI_META_APP_SERVICE_ACCOUNT
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.serviceAccountName
+            - name: AERAKI_META_WORKLOAD_SELECTOR
+              value: "app: dubbo-sample-consumer"
+            - name: AERAKI_META_APP_VERSION
+              value: v1
+          ports:
+            - containerPort: 20880
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dubbo-sample-provider-v2
+  labels:
+    app: dubbo-sample-provider
+spec:
+  selector:
+    matchLabels:
+      app: dubbo-sample-provider
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: dubbo-sample-provider
+        version: v2
+    spec:
+      containers:
+        - name: dubbo-sample-provider
+          image: aeraki/dubbo-sample-provider:v2
+          imagePullPolicy: Always
+          env:
+            - name: ZK_ADDR
+              value: zookeeper:2181
+            - name: AERAKI_META_APP_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: AERAKI_META_APP_SERVICE_ACCOUNT
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.serviceAccountName
+            - name: AERAKI_META_WORKLOAD_SELECTOR
+              value: "app: dubbo-sample-consumer"
+            - name: AERAKI_META_APP_VERSION
+              value: v2
+          ports:
+            - containerPort: 20880
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: dubbo-consumer
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dubbo-sample-consumer
+  labels:
+    app: dubbo-sample-consumer
+spec:
+  selector:
+    matchLabels:
+      app: dubbo-sample-consumer
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: dubbo-sample-consumer
+    spec:
+      serviceAccountName: dubbo-consumer
+      containers:
+        - name: dubbo-sample-consumer
+          image: aeraki/dubbo-sample-consumer
+          env:
+            - name: mode
+              value: demo
+          ports:
+            - containerPort: 9009
