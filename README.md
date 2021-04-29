@@ -145,6 +145,20 @@ Hello Aeraki, response from dubbo-sample-provider-v2-5797b6bcb8-k4dsf/172.18.0.5
 
 ## 服务权限控制
 
+首先我们需要在服务网格中启用 mtls，以对服务进行身份认证。
+
+```bash
+kubectl apply -n istio-system -f - <<EOF
+apiVersion: "security.istio.io/v1beta1"
+kind: "PeerAuthentication"
+metadata:
+  name: "default"
+spec:
+  mtls:
+    mode: STRICT
+EOF
+```
+
 创建认证策略，禁止 dubbo-consumer 访问 dubbo-provider 服务。
 
 ```bash
@@ -174,6 +188,35 @@ EOF
 [28/04/21 07:50:34:034 UTC] DubboClientHandler-org.apache.dubbo.samples.basic.api.demoservice:20880-thread-35  WARN support.DefaultFuture:  [DUBBO] The timeout response finally returned at 2021-04-28 07:50:34.648, response status is 80, channel: /172.18.0.50:60520 -> org.apache.dubbo.samples.basic.api.demoservice/240.240.0.154:20880, please check provider side for detailed result., dubbo version: 1.0-SNAPSHOT, current host: 172.18.0.50
 org.apache.dubbo.rpc.RpcException: Invoke remote method timeout. method: sayHello, provider: dubbo://org.apache.dubbo.samples.basic.api.demoservice:20880/org.apache.dubbo.samples.basic.api.DemoService?application=demo-consumer&check=true&init=false&interface=org.apache.dubbo.samples.basic.api.DemoService&pid=1&register.ip=172.18.0.50&remote.application=&revision=1.0-SNAPSHOT&side=consumer&sticky=false&timeout=3000, cause: org.apache.dubbo.remoting.TimeoutException: Waiting server-side response timeout by scan timer. start time: 2021-04-28 07:50:34.646, end time: 2021-04-28 07:50:37.656, client elapsed: 0 ms, server elapsed: 3010 ms, timeout: 3000 ms, request: Request [id=649, version=2.0.2, twoway=true, event=false, broken=false, data=null], channel: /172.18.0.50:60520 -> org.apache.dubbo.samples.basic.api.demoservice/240.240.0.154:20880
 	at org.apache.dubbo.rpc.protocol.AsyncToSyncInvoker.invoke(AsyncToSyncInvoker.java:70)
+```
+
+修改认证策略，允许 dubbo-consumer 访问 dubbo-provider 服务。
+
+```bash
+k apply -f - <<EOF
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+ name: dubbo-test
+ namespace: dubbo
+spec:
+  action: ALLOW
+  selector:
+    matchLabels:
+      app: dubbo-sample-provider
+  rules:
+  - from:
+    - source:
+        principals: ["cluster.local/ns/dubbo/sa/dubbo-consumer"]
+EOF
+```
+
+查看 dubbo consumer 的日志，可以看到访问成功。
+
+```bash
+➜  kubectl logs -f dubbo-sample-consumer-78b4754bb8-2lqzm --tail 2 -c dubbo-sample-consumer -n dubbo
+Hello Aeraki, response from dubbo-sample-provider-v1-d56ddbf99-kqkzf/172.18.0.58
+Hello Aeraki, response from dubbo-sample-provider-v1-d56ddbf99-kqkzf/172.18.0.58
 ```
 
 
