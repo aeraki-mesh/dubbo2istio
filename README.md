@@ -21,7 +21,10 @@ Aeraki 提供了一个 Dubbo Demo 应用，用于使用该 Demo 来测试 Dubbo 
 执行下面的命令安装 Dubbo Demo 应用：
 ```bash
 kubectl create ns dubbo
-kubectl label namespace dubbo istio.io/rev=1-8-1 --overwrite=true
+# TCM
+kubectl label namespace dubbo istio.io/rev=1-8-1
+# Istio 1.9
+# kubectl label namespace dubbo istio-injection=enabled
 g clone https://github.com/aeraki-framework/dubbo2istio.git
 cd dubbo2istio
 kubectl apply -f demo/k8s/ -n dubbo
