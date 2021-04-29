@@ -1,10 +1,9 @@
 # Dubbo2Istio
 
-Dubbo2istio watches Dubbo ZooKeeper registry and synchronize all the dubbo services to Istio.
+Dubbo2istio 将 Dubbo ZooKeeper 服务注册表中的 Dubbo 服务自动同步到 Istio 服务网格中。
 
-Dubbo2istio will create a ServiceEntry resource for each service in the Dubbo ZooKeeper registry.
-
-Like this diagram shows, [Aeraki + Dubbo2istio](https://github.com/aeraki-framework/aeraki) can help you manage dubbo applications in Istio Service Meshes. 
+如下图所示， [Aeraki + Dubbo2istio](https://github.com/aeraki-framework/aeraki) 可以协助您将 Dubbo 应用迁移到 Istio 服务网格中，
+享用到服务网格提供的高级流量管理、可见性、安全等能力，而这些无需改动一行 Dubbo 源代码。
 ![ dubbo2istio ](doc/dubbo2istio.png)
 
 # Demo 应用
@@ -143,3 +142,44 @@ Hello Aeraki, response from dubbo-sample-provider-v2-5797b6bcb8-k4dsf/172.18.0.5
 ## 查看 Dubbo 相关的性能指标
 在 Istio Grafana 插件或者 TCM 云原生监控界面中查看 Dubbo 调用的性能指标，包括 调用次数、调用延迟、调用成功率，如下图所示：
 ![ dubbo2istio ](doc/grafana.png)
+
+## 服务权限控制
+
+创建认证策略，禁止 dubbo-consumer 访问 dubbo-provider 服务。
+
+```bash
+➜  dubbo2istio git:(master) ✗ k apply -f - <<EOF
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+ name: dubbo-test
+ namespace: dubbo
+spec:
+  action: DENY 
+  selector:
+    matchLabels:
+      app: dubbo-sample-provider
+  rules:
+  - from:
+    - source:
+        principals: ["cluster.local/ns/dubbo/sa/dubbo-consumer"]
+EOF
+```
+
+查看 dubbo consumer 的日志，可以看到由于客户端的 service account 被禁止访问而失败
+
+```bash
+➜  kubectl logs -f dubbo-sample-consumer-78b4754bb8-2lqzm --tail 2 -c dubbo-sample-consumer -n dubbo
+	... 11 more
+[28/04/21 07:50:34:034 UTC] DubboClientHandler-org.apache.dubbo.samples.basic.api.demoservice:20880-thread-35  WARN support.DefaultFuture:  [DUBBO] The timeout response finally returned at 2021-04-28 07:50:34.648, response status is 80, channel: /172.18.0.50:60520 -> org.apache.dubbo.samples.basic.api.demoservice/240.240.0.154:20880, please check provider side for detailed result., dubbo version: 1.0-SNAPSHOT, current host: 172.18.0.50
+org.apache.dubbo.rpc.RpcException: Invoke remote method timeout. method: sayHello, provider: dubbo://org.apache.dubbo.samples.basic.api.demoservice:20880/org.apache.dubbo.samples.basic.api.DemoService?application=demo-consumer&check=true&init=false&interface=org.apache.dubbo.samples.basic.api.DemoService&pid=1&register.ip=172.18.0.50&remote.application=&revision=1.0-SNAPSHOT&side=consumer&sticky=false&timeout=3000, cause: org.apache.dubbo.remoting.TimeoutException: Waiting server-side response timeout by scan timer. start time: 2021-04-28 07:50:34.646, end time: 2021-04-28 07:50:37.656, client elapsed: 0 ms, server elapsed: 3010 ms, timeout: 3000 ms, request: Request [id=649, version=2.0.2, twoway=true, event=false, broken=false, data=null], channel: /172.18.0.50:60520 -> org.apache.dubbo.samples.basic.api.demoservice/240.240.0.154:20880
+	at org.apache.dubbo.rpc.protocol.AsyncToSyncInvoker.invoke(AsyncToSyncInvoker.java:70)
+```
+
+
+## 一些限制
+
+* 多集群环境下，同一个 dubbo service 的多个 provider 实例需要部署在相同的 namesapce 中。
+该限制的原因是 aeraki 采用了 dubbo interface 作为全局唯一的服务名，客户端使用该服务名作为 dns 名对服务端进行访问。
+而在 Istio 中，一个服务必须隶属于一个 namespace，因此我们在进行多集群部署时，同一个 dubbo service 的多个实例不能存在于不同的 namespace 中。
+如果违反了该部署限制，会导致客户端跨 namespace 访问服务器端实例时由于 mtls 证书验证失败而出错。
