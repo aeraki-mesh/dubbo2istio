@@ -8,7 +8,7 @@ spec:
   subsets:
   - name: v1
     labels:
-      revision: 1.0-SNAPSHOT
+      version: v1
   - name: v2
     labels:
-      revision: 2.0-SNAPSHOT
+      version: v2
