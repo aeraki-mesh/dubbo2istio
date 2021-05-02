@@ -18,11 +18,13 @@ spec:
     spec:
       containers:
         - name: dubbo-sample-provider
-          image: aeraki/dubbo-sample-provider:v1
+          image: aeraki/dubbo-sample-provider
           imagePullPolicy: Always
           env:
             - name: ZK_ADDR
-              value: zookeeper:2181
+              value: zookeeper://zookeeper:2181
+            - name: REGISTER_ZK
+              value: "true"
             - name: AERAKI_META_APP_NAMESPACE
               valueFrom:
                 fieldRef:
@@ -32,7 +34,7 @@ spec:
                 fieldRef:
                   fieldPath: spec.serviceAccountName
             - name: AERAKI_META_WORKLOAD_SELECTOR
-              value: "app: dubbo-sample-consumer"
+              value: "dubbo-sample-provider"     # The deployment must have a label: app:dubbo-sample-provider
             - name: AERAKI_META_APP_VERSION
               value: v1
           ports:
@@ -57,11 +59,13 @@ spec:
     spec:
       containers:
         - name: dubbo-sample-provider
-          image: aeraki/dubbo-sample-provider:v2
+          image: aeraki/dubbo-sample-provider
           imagePullPolicy: Always
           env:
             - name: ZK_ADDR
-              value: zookeeper:2181
+              value: zookeeper://zookeeper:2181
+            - name: REGISTER_ZK
+              value: "true"
             - name: AERAKI_META_APP_NAMESPACE
               valueFrom:
                 fieldRef:
@@ -71,7 +75,7 @@ spec:
                 fieldRef:
                   fieldPath: spec.serviceAccountName
             - name: AERAKI_META_WORKLOAD_SELECTOR
-              value: "app: dubbo-sample-consumer"
+              value: "dubbo-sample-provider"     # The deployment must have a label: app:dubbo-sample-provider
             - name: AERAKI_META_APP_VERSION
               value: v2
           ports:
