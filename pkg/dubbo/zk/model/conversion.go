@@ -65,7 +65,7 @@ func ConvertServiceEntry(service string, dubboProviders []string) (*v1alpha3.Ser
 				"interface, ip or port is missing: %s", provider)
 		}
 
-		serviceAccount := dubboAttributes["aeraki_meta_app_service_account"]
+		serviceAccount := dubboAttributes["aeraki_meta_locality"]
 		if serviceAccount == "" {
 			serviceAccount = defaultServiceAccount
 		}
@@ -111,6 +111,8 @@ func ConvertServiceEntry(service string, dubboProviders []string) (*v1alpha3.Ser
 			workloadSelector = selector
 		}
 
+		locality := strings.ReplaceAll(dubboAttributes["aeraki_meta_locality"], "%2F", "/")
+
 		labels := dubboAttributes
 		delete(labels, "service")
 		delete(labels, "ip")
@@ -118,6 +120,7 @@ func ConvertServiceEntry(service string, dubboProviders []string) (*v1alpha3.Ser
 		delete(labels, "aeraki_meta_app_service_account")
 		delete(labels, "aeraki_meta_app_namespace")
 		delete(labels, "aeraki_meta_workload_selector")
+		delete(labels, "aeraki_meta_locality")
 		labels["version"] = dubboAttributes["aeraki_meta_app_version"]
 		delete(labels, "aeraki_meta_app_version")
 		for key, value := range labels {
@@ -127,7 +130,8 @@ func ConvertServiceEntry(service string, dubboProviders []string) (*v1alpha3.Ser
 			}
 		}
 
-		endpoints = append(endpoints, createWorkloadEntry(instanceIP, serviceAccount, uint32(servicePort), labels))
+		endpoints = append(endpoints, createWorkloadEntry(instanceIP, serviceAccount, uint32(servicePort), locality,
+			labels))
 	}
 	serviceEntry := createServiceEntry(namespace, service, dubboInterface, servicePort, endpoints, workloadSelector)
 	return serviceEntry, nil
@@ -161,12 +165,13 @@ func createServiceEntry(namespace string, service string, dubboInterface string,
 	return serviceEntry
 }
 
-func createWorkloadEntry(ip string, serviceAccount string, port uint32,
+func createWorkloadEntry(ip string, serviceAccount string, port uint32, locality string,
 	labels map[string]string) *istio.WorkloadEntry {
 	return &istio.WorkloadEntry{
 		Address:        ip,
 		Ports:          map[string]uint32{dubboPortName: port},
 		ServiceAccount: serviceAccount,
+		Locality:       locality,
 		Labels:         labels,
 	}
 }

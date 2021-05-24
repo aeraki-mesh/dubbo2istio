@@ -37,6 +37,10 @@ spec:
               value: "dubbo-sample-provider"     # The deployment must have a label: app:dubbo-sample-provider
             - name: AERAKI_META_APP_VERSION
               value: v1
+            - name: AERAKI_META_LOCALITY
+              value: bj/800002
+            - name: SERVICE_GROUP
+              value: user
           ports:
             - containerPort: 20880
 ---
@@ -78,6 +82,10 @@ spec:
               value: "dubbo-sample-provider"     # The deployment must have a label: app:dubbo-sample-provider
             - name: AERAKI_META_APP_VERSION
               value: v2
+            - name: AERAKI_META_LOCALITY
+              value: bj/800001
+            - name: SERVICE_GROUP
+              value: batchjob
           ports:
             - containerPort: 20880
 ---
@@ -111,3 +119,4 @@ spec:
               value: demo
           ports:
             - containerPort: 9009
+
