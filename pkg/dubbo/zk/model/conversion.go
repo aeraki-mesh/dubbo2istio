@@ -65,7 +65,7 @@ func ConvertServiceEntry(service string, dubboProviders []string) (*v1alpha3.Ser
 				"interface, ip or port is missing: %s", provider)
 		}
 
-		serviceAccount := dubboAttributes["aeraki_meta_locality"]
+		serviceAccount := dubboAttributes["aeraki_meta_app_service_account"]
 		if serviceAccount == "" {
 			serviceAccount = defaultServiceAccount
 		}
