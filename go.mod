@@ -9,6 +9,7 @@ require (
 	github.com/onsi/ginkgo v1.13.0 // indirect
 	github.com/spf13/cobra v1.0.0 // indirect
 	github.com/stretchr/testify v1.6.1 // indirect
+	go.uber.org/multierr v1.5.0
 	go.uber.org/zap v1.15.0 // indirect
 	golang.org/x/crypto v0.0.0-20200709230013-948cd5f35899 // indirect
 	golang.org/x/lint v0.0.0-20200302205851-738671d3881b // indirect
