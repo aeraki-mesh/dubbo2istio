@@ -47,41 +47,38 @@ func init() {
 }
 
 // ConvertServiceEntry converts dubbo provider znode to a service entry
-func ConvertServiceEntry(service string, dubboProviders []string) (*v1alpha3.ServiceEntry, error) {
-	endpoints := make([]*istio.WorkloadEntry, 0)
-	namespace := ""
-	dubboInterface := ""
-	workloadSelector := ""
-	servicePort := 0
+func ConvertServiceEntry(service string, dubboProviders []string) (map[string]*v1alpha3.ServiceEntry, error) {
+	serviceEntries := make(map[string]*v1alpha3.ServiceEntry)
+
 	for _, provider := range dubboProviders {
 		dubboAttributes := parseProvider(provider)
-		dubboService := strings.ToLower(dubboAttributes["service"])
-		dubboInterface = dubboAttributes["interface"]
+		dubboInterface := dubboAttributes["interface"]
 		instanceIP := dubboAttributes["ip"]
 		dubboPort := dubboAttributes["port"]
-
-		if dubboService == "" || dubboInterface == "" || instanceIP == "" || dubboPort == "" {
+		if dubboInterface == "" || instanceIP == "" || dubboPort == "" {
 			return nil, fmt.Errorf("failed to convert dubbo provider to workloadEntry, parameters service, "+
 				"interface, ip or port is missing: %s", provider)
 		}
+
+		// interface+group+version is the primary key of a dubbo service
+		host := constructIGV(dubboAttributes)
 
 		serviceAccount := dubboAttributes["aeraki_meta_app_service_account"]
 		if serviceAccount == "" {
 			serviceAccount = defaultServiceAccount
 		}
 
-		// All the providers of a dubbo service should be deployed in the same namespace
 		ns := dubboAttributes["aeraki_meta_app_namespace"]
 		if ns == "" {
 			log.Errorf("can't find aeraki_meta_app_namespace parameter, ignore provider %s,  ", provider)
 			continue
 		}
-		if namespace != "" && ns != namespace {
-			log.Errorf("found provider in multiple namespaces: %s %s, ignore provider %s", namespace, ns, provider)
-			continue
-		}
-		if namespace == "" {
-			namespace = ns
+		// All the providers of a dubbo service should be deployed in the same namespace
+		if se, exist := serviceEntries[host]; exist {
+			if ns != se.Namespace {
+				log.Errorf("found provider in multiple namespaces: %s %s, ignore provider %s", se.Namespace, ns, provider)
+				continue
+			}
 		}
 
 		port, err := strconv.Atoi(dubboPort)
@@ -90,25 +87,26 @@ func ConvertServiceEntry(service string, dubboProviders []string) (*v1alpha3.Ser
 			continue
 		}
 
-		if servicePort != 0 && port != servicePort {
-			log.Errorf("found multiple ports for service %s : %v  %v, ignore provider %s", service, servicePort, port, provider)
-			continue
+		// We assume that the port of all the provider instances should be the same. Is this a reasonable assumption?
+		if se, exist := serviceEntries[host]; exist {
+			if uint32(port) != se.Spec.Ports[0].Number {
+				log.Errorf("found multiple ports for service %s : %v  %v, ignore provider %s", service, se.Spec.Ports[0].Number, port, provider)
+				continue
+			}
 		}
 
-		if servicePort == 0 {
-			servicePort = port
-		}
-
+		// What is this for? Authorization?
 		selector := dubboAttributes["aeraki_meta_workload_selector"]
 		if selector == "" {
 			log.Errorf("can't find aeraki_meta_workload_selector parameter for provider %s,  ", provider)
 		}
-		if workloadSelector != "" && selector != workloadSelector {
-			log.Errorf("found provider with different workload selectors: %s %s", workloadSelector, selector,
-				provider)
-		}
-		if workloadSelector == "" && selector != "" {
-			workloadSelector = selector
+
+		if se, exist := serviceEntries[host]; exist {
+			workloadSelector := se.Annotations["workloadSelector"]
+			if selector != workloadSelector {
+				log.Errorf("found provider %s with different workload selectors: %s %s", provider, workloadSelector,
+					selector)
+			}
 		}
 
 		locality := strings.ReplaceAll(dubboAttributes["aeraki_meta_locality"], "%2F", "/")
@@ -121,7 +119,12 @@ func ConvertServiceEntry(service string, dubboProviders []string) (*v1alpha3.Ser
 		delete(labels, "aeraki_meta_app_namespace")
 		delete(labels, "aeraki_meta_workload_selector")
 		delete(labels, "aeraki_meta_locality")
-		labels["version"] = dubboAttributes["aeraki_meta_app_version"]
+
+		version := dubboAttributes["aeraki_meta_app_version"]
+		if version != "" {
+			labels["version"] = version
+		}
+
 		delete(labels, "aeraki_meta_app_version")
 		for key, value := range labels {
 			if isInvalidLabel(key, value) {
@@ -129,27 +132,44 @@ func ConvertServiceEntry(service string, dubboProviders []string) (*v1alpha3.Ser
 				log.Infof("drop invalid label: key %s, value: %s", key, value)
 			}
 		}
-
-		endpoints = append(endpoints, createWorkloadEntry(instanceIP, serviceAccount, uint32(servicePort), locality,
-			labels))
+		serviceEntry, exist := serviceEntries[host]
+		if !exist {
+			serviceEntry = createServiceEntry(ns, host, dubboInterface, port, selector)
+			serviceEntries[host] = serviceEntry
+		}
+		serviceEntry.Spec.Endpoints = append(serviceEntry.Spec.Endpoints,
+			createWorkloadEntry(instanceIP, serviceAccount, uint32(port), locality, labels))
 	}
-	serviceEntry := createServiceEntry(namespace, service, dubboInterface, servicePort, endpoints, workloadSelector)
-	return serviceEntry, nil
+	return serviceEntries, nil
 }
 
-func createServiceEntry(namespace string, service string, dubboInterface string, servicePort int,
-	endpoints []*istio.WorkloadEntry, workloadSelector string) *v1alpha3.ServiceEntry {
+func constructIGV(attributes map[string]string) string {
+	igv := attributes["interface"]
+	group := attributes["group"]
+	version := strings.ReplaceAll(attributes["version"], ".", "-")
+
+	if group != "" {
+		igv = igv + "-" + group
+	}
+	if version != "" {
+		igv = igv + "-" + version
+	}
+
+	return strings.ToLower(igv)
+}
+
+func createServiceEntry(namespace string, host string, dubboInterface string, servicePort int, workloadSelector string) *v1alpha3.ServiceEntry {
 	spec := &istio.ServiceEntry{
-		Hosts:      []string{strings.ToLower(service)},
+		Hosts:      []string{host},
 		Ports:      []*istio.Port{convertPort(servicePort)},
 		Resolution: istio.ServiceEntry_STATIC,
 		Location:   istio.ServiceEntry_MESH_INTERNAL,
-		Endpoints:  endpoints,
+		Endpoints:  make([]*istio.WorkloadEntry, 0),
 	}
 
 	serviceEntry := &v1alpha3.ServiceEntry{
 		ObjectMeta: v1.ObjectMeta{
-			Name:      ConstructServiceEntryName(service),
+			Name:      ConstructServiceEntryName(host),
 			Namespace: namespace,
 			Labels: map[string]string{
 				"manager":  aerakiFieldManager,
@@ -192,7 +212,7 @@ func convertPort(port int) *istio.Port {
 func parseProvider(provider string) map[string]string {
 	dubboAttributes := make(map[string]string)
 	result := providerRegexp.FindStringSubmatch(provider)
-	if result != nil && len(result) == 5 {
+	if len(result) == 5 {
 		dubboAttributes["ip"] = result[1]
 		dubboAttributes["port"] = result[2]
 		dubboAttributes["service"] = result[3]

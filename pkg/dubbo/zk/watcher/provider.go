@@ -65,7 +65,7 @@ func NewProviderWatcher(ic *istioclient.Clientset, conn *zk.Conn, service string
 		path:           path,
 		conn:           conn,
 		ic:             ic,
-		serviceEntryNS: make(map[string]string, 0),
+		serviceEntryNS: make(map[string]string),
 	}
 }
 
@@ -79,7 +79,7 @@ func (w *ProviderWatcher) Run(stop <-chan struct{}) {
 	syncCounter := 0
 
 	providers, eventChan := watchUntilSuccess(w.path, w.conn)
-	w.syncService2IstioUntilMaxRetries(w.service, providers)
+	w.syncServices2IstioUntilMaxRetries(w.service, providers)
 
 	for {
 		select {
@@ -102,7 +102,7 @@ func (w *ProviderWatcher) Run(stop <-chan struct{}) {
 					syncCounter++
 					log.Infof("Sync %s debounce stable[%d] %d: %v since last change, %v since last push",
 						w.service, syncCounter, debouncedEvents, quietTime, eventDelay)
-					w.syncService2IstioUntilMaxRetries(w.service, providers)
+					w.syncServices2IstioUntilMaxRetries(w.service, providers)
 					debouncedEvents = 0
 				}
 			} else {
@@ -114,27 +114,27 @@ func (w *ProviderWatcher) Run(stop <-chan struct{}) {
 	}
 }
 
-func (w *ProviderWatcher) syncService2IstioUntilMaxRetries(service string, providers []string) {
-	err := w.syncService2Istio(w.service, providers)
-	retries := 0
-	for err != nil {
-		if isRetryableError(err) && retries < maxRetries {
-			log.Errorf("Failed to synchronize dubbo services to Istio, error: %v,  retrying %v ...", err, retries)
-			err = w.syncService2Istio(w.service, providers)
-			retries++
-		} else {
-			log.Errorf("Failed to synchronize dubbo services to Istio: %v", err)
-			return
+func (w *ProviderWatcher) syncServices2IstioUntilMaxRetries(service string, providers []string) {
+	serviceEntries, err := model.ConvertServiceEntry(service, providers)
+	if err != nil {
+		log.Errorf("Failed to synchronize dubbo services to Istio: %v", err)
+	}
+	for _, new := range serviceEntries {
+		err := w.syncService2Istio(new)
+		retries := 0
+		for err != nil {
+			if isRetryableError(err) && retries < maxRetries {
+				log.Errorf("Failed to synchronize dubbo services to Istio, error: %v,  retrying %v ...", err, retries)
+				err = w.syncService2Istio(new)
+				retries++
+			} else {
+				log.Errorf("Failed to synchronize dubbo services to Istio: %v", err)
+			}
 		}
 	}
 }
 
-func (w *ProviderWatcher) syncService2Istio(service string, providers []string) error {
-	new, err := model.ConvertServiceEntry(service, providers)
-	if err != nil {
-		return err
-	}
-
+func (w *ProviderWatcher) syncService2Istio(new *v1alpha3.ServiceEntry) error {
 	// delete the corresponding service entry because all the endpoints have been deleted.
 	if serviceHasNoEndpoints(new) {
 		log.Infof("found dubbo service without providers : %s, delete the corresponding service entry",

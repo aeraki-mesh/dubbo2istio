@@ -15,10 +15,11 @@
 package zk
 
 import (
+	"time"
+
 	"github.com/go-zookeeper/zk"
 	istioclient "istio.io/client-go/pkg/clientset/versioned"
 	"istio.io/pkg/log"
-	"time"
 )
 
 const (
@@ -39,7 +40,7 @@ func NewServiceWatcher(conn *zk.Conn, clientset *istioclient.Clientset) *Service
 		ic:               clientset,
 		path:             dubboRegistryPath,
 		conn:             conn,
-		providerWatchers: make(map[string]*ProviderWatcher, 0),
+		providerWatchers: make(map[string]*ProviderWatcher),
 	}
 }
 
@@ -67,10 +68,10 @@ func (w *ServiceWatcher) waitFroDubboRootPath() {
 		if err != nil {
 			log.Errorf("failed to check path existence : %v", err)
 		}
-		if !exists{
-			log.Warnf("zookeeper path "+dubboRegistryPath+" doesn't exist, wait until it's created")
+		if !exists {
+			log.Warnf("zookeeper path " + dubboRegistryPath + " doesn't exist, wait until it's created")
 		}
-		time.Sleep(time.Second*2)
+		time.Sleep(time.Second * 2)
 	}
 }
 
