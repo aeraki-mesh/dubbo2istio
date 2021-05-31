@@ -18,7 +18,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
+
+	"go.uber.org/multierr"
 
 	"github.com/aeraki-framework/double2istio/pkg/dubbo/zk/model"
 
@@ -54,7 +57,7 @@ type ProviderWatcher struct {
 	path           string
 	conn           *zk.Conn
 	ic             *istioclient.Clientset
-	serviceEntryNS map[string]string //key name, value namespace
+	serviceEntryNS map[string]string //key service entry name, value namespace
 }
 
 // NewWatcher creates a ProviderWatcher
@@ -119,6 +122,21 @@ func (w *ProviderWatcher) syncServices2IstioUntilMaxRetries(service string, prov
 	if err != nil {
 		log.Errorf("Failed to synchronize dubbo services to Istio: %v", err)
 	}
+
+	if len(serviceEntries) == 0 {
+		err := w.deleteServiceEntryByDubboService(service)
+		retries := 0
+		for err != nil {
+			if isRetryableError(err) && retries < maxRetries {
+				log.Errorf("Failed to delete services from Istio, error: %v,  retrying %v ...", err, retries)
+				err = w.deleteServiceEntryByDubboService(service)
+				retries++
+			} else {
+				log.Errorf("Failed to delete services from Istio: %v", err)
+			}
+		}
+	}
+
 	for _, new := range serviceEntries {
 		err := w.syncService2Istio(new)
 		retries := 0
@@ -135,13 +153,6 @@ func (w *ProviderWatcher) syncServices2IstioUntilMaxRetries(service string, prov
 }
 
 func (w *ProviderWatcher) syncService2Istio(new *v1alpha3.ServiceEntry) error {
-	// delete the corresponding service entry because all the endpoints have been deleted.
-	if serviceHasNoEndpoints(new) {
-		log.Infof("found dubbo service without providers : %s, delete the corresponding service entry",
-			new.Name)
-		return w.deleteServiceEntry(new.Name)
-	}
-
 	// delete old service entry if multiple service entries found in different namespaces.
 	// Aeraki doesn't support deploying providers of the same dubbo interface in multiple namespaces because interface
 	// is used as the global dns name for dubbo service across the whole mesh
@@ -181,37 +192,6 @@ func (w *ProviderWatcher) createServiceEntry(serviceEntry *v1alpha3.ServiceEntry
 	return err
 }
 
-func (w *ProviderWatcher) deleteServiceEntry(name string) error {
-	ns, exist := w.serviceEntryNS[name]
-	if !exist {
-		serviceEntryList, err := w.ic.NetworkingV1alpha3().ServiceEntries("").List(context.TODO(), metav1.ListOptions{})
-		if err != nil {
-			return fmt.Errorf("failed to list service entry: %v", err)
-		}
-		for _, serviceEntry := range serviceEntryList.Items {
-			if serviceEntry.Name == name {
-				ns = serviceEntry.Namespace
-				break
-			}
-		}
-	}
-
-	if ns != "" {
-		err := w.ic.NetworkingV1alpha3().ServiceEntries(ns).Delete(context.TODO(), name, metav1.DeleteOptions{})
-		if err == nil {
-			delete(w.serviceEntryNS, name)
-			log.Infof("service entry %s/%s has been deleted", ns, name)
-		} else if isNotFound(err) {
-			log.Infof("service entry %s/%s doesn't exist", ns, name)
-		} else {
-			return nil
-		}
-	} else {
-		log.Infof("service entry %s/%s doesn't exist", ns, name)
-	}
-	return nil
-}
-
 func (w *ProviderWatcher) updateServiceEntry(new *v1alpha3.ServiceEntry,
 	old *v1alpha3.ServiceEntry) error {
 	new.Spec.Ports = old.Spec.Ports
@@ -222,6 +202,32 @@ func (w *ProviderWatcher) updateServiceEntry(new *v1alpha3.ServiceEntry,
 		log.Infof("service entry %s has been updated: %s", new.Name, struct2JSON(new))
 	}
 	return err
+}
+
+func (w *ProviderWatcher) deleteServiceEntryByDubboService(service string) error {
+	serviceEntryList, err := w.ic.NetworkingV1alpha3().ServiceEntries("").List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to list service entry: %v", err)
+	}
+
+	name := model.ConstructServiceEntryName(service)
+	var errors error = nil
+	for _, serviceEntry := range serviceEntryList.Items {
+		// We may have multiple interface+group+version combinations under one dubbo service/interface
+		if strings.HasPrefix(serviceEntry.Name, name) {
+			err := w.ic.NetworkingV1alpha3().ServiceEntries(serviceEntry.Namespace).Delete(context.TODO(),
+				serviceEntry.Name, metav1.DeleteOptions{})
+			if err == nil {
+				delete(w.serviceEntryNS, serviceEntry.Name)
+				log.Infof("service entry %s/%s has been deleted", serviceEntry.Namespace, serviceEntry.Name)
+			} else if isNotFound(err) {
+				log.Infof("service entry %s/%s doesn't exist", serviceEntry.Namespace, serviceEntry.Name)
+			} else {
+				errors = multierr.Append(errors, err)
+			}
+		}
+	}
+	return errors
 }
 
 func isRealError(err error) bool {
@@ -236,10 +242,6 @@ func isRetryableError(err error) bool {
 
 func isNotFound(err error) bool {
 	return err != nil && errors.IsNotFound(err)
-}
-
-func serviceHasNoEndpoints(serviceEntry *v1alpha3.ServiceEntry) bool {
-	return len(serviceEntry.Spec.Endpoints) == 0
 }
 
 func watchUntilSuccess(path string, conn *zk.Conn) ([]string, <-chan zk.Event) {
