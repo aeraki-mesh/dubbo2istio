@@ -18,10 +18,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	networkingv1alpha3 "istio.io/api/networking/v1alpha3"
 	"strings"
 	"time"
-
-	"go.uber.org/multierr"
 
 	"github.com/aeraki-framework/double2istio/pkg/dubbo/zk/model"
 
@@ -58,10 +57,11 @@ type ProviderWatcher struct {
 	conn           *zk.Conn
 	ic             *istioclient.Clientset
 	serviceEntryNS map[string]string //key service entry name, value namespace
+	zkName         string
 }
 
 // NewWatcher creates a ProviderWatcher
-func NewProviderWatcher(ic *istioclient.Clientset, conn *zk.Conn, service string) *ProviderWatcher {
+func NewProviderWatcher(ic *istioclient.Clientset, conn *zk.Conn, service string, zkName string) *ProviderWatcher {
 	path := "/dubbo/" + service + "/providers"
 	return &ProviderWatcher{
 		service:        service,
@@ -69,6 +69,7 @@ func NewProviderWatcher(ic *istioclient.Clientset, conn *zk.Conn, service string
 		conn:           conn,
 		ic:             ic,
 		serviceEntryNS: make(map[string]string),
+		zkName:         zkName,
 	}
 }
 
@@ -118,41 +119,50 @@ func (w *ProviderWatcher) Run(stop <-chan struct{}) {
 }
 
 func (w *ProviderWatcher) syncServices2IstioUntilMaxRetries(service string, providers []string) {
-	serviceEntries, err := model.ConvertServiceEntry(service, providers)
+	serviceEntries, err := model.ConvertServiceEntry(w.zkName, service, providers)
 	if err != nil {
 		log.Errorf("Failed to synchronize dubbo services to Istio: %v", err)
 	}
 
-	if len(serviceEntries) == 0 {
-		err := w.deleteServiceEntryByDubboService(service)
-		retries := 0
-		for err != nil {
-			if isRetryableError(err) && retries < maxRetries {
-				log.Errorf("Failed to delete services from Istio, error: %v,  retrying %v ...", err, retries)
-				err = w.deleteServiceEntryByDubboService(service)
-				retries++
-			} else {
-				log.Errorf("Failed to delete services from Istio: %v", err)
-			}
-		}
+	serviceEntryMap, err := w.getServiceEntryByDubboService(service)
+	if err != nil {
+		log.Errorf("Failed to list exist serviceentriyes : %v", err)
 	}
 
 	for _, new := range serviceEntries {
-		err := w.syncService2Istio(new)
-		retries := 0
-		for err != nil {
-			if isRetryableError(err) && retries < maxRetries {
-				log.Errorf("Failed to synchronize dubbo services to Istio, error: %v,  retrying %v ...", err, retries)
-				err = w.syncService2Istio(new)
-				retries++
-			} else {
-				log.Errorf("Failed to synchronize dubbo services to Istio: %v", err)
-			}
+		w.syncService2IstioWithRetry(new, serviceEntryMap[new.Name])
+		delete(serviceEntryMap, new.Name)
+	}
+
+	for _, serviceEntry := range serviceEntryMap {
+		w.syncService2IstioWithRetry(nil, serviceEntry)
+	}
+}
+
+func (w *ProviderWatcher) syncService2IstioWithRetry(new *v1alpha3.ServiceEntry, old *v1alpha3.ServiceEntry) {
+	err := w.syncService2Istio(new, old)
+	retries := 0
+	for err != nil {
+		if isRetryableError(err) && retries < maxRetries {
+			log.Errorf("Failed to synchronize dubbo services to Istio, error: %v,  retrying %v ...", err, retries)
+			err = w.syncService2Istio(new, old)
+			retries++
+		} else {
+			log.Errorf("Failed to synchronize dubbo services to Istio: %v", err)
+			err = nil
 		}
 	}
 }
 
-func (w *ProviderWatcher) syncService2Istio(new *v1alpha3.ServiceEntry) error {
+func (w *ProviderWatcher) syncService2Istio(new *v1alpha3.ServiceEntry, old *v1alpha3.ServiceEntry) error {
+	if new == nil && old != nil {
+		filterWorkloadEntryByZkName(w.zkName, old)
+		if len(old.Spec.Endpoints) == 0 {
+			return w.deleteServiceEntry(old)
+		} else {
+			return w.updateServiceEntry(old, old)
+		}
+	}
 	// delete old service entry if multiple service entries found in different namespaces.
 	// Aeraki doesn't support deploying providers of the same dubbo interface in multiple namespaces because interface
 	// is used as the global dns name for dubbo service across the whole mesh
@@ -169,17 +179,14 @@ func (w *ProviderWatcher) syncService2Istio(new *v1alpha3.ServiceEntry) error {
 		}
 	}
 
-	existingServiceEntry, err := w.ic.NetworkingV1alpha3().ServiceEntries(new.Namespace).Get(context.TODO(), new.Name,
-		metav1.GetOptions{},
-	)
-
-	if isRealError(err) {
-		return err
-	} else if isNotFound(err) {
+	if new != nil && old == nil {
 		return w.createServiceEntry(new)
-	} else {
-		return w.updateServiceEntry(new, existingServiceEntry)
 	}
+	if new != nil && old != nil {
+		mergeServiceEntryEndpoints(w.zkName, new, old)
+		return w.updateServiceEntry(new, old)
+	}
+	return nil
 }
 
 func (w *ProviderWatcher) createServiceEntry(serviceEntry *v1alpha3.ServiceEntry) error {
@@ -204,30 +211,42 @@ func (w *ProviderWatcher) updateServiceEntry(new *v1alpha3.ServiceEntry,
 	return err
 }
 
-func (w *ProviderWatcher) deleteServiceEntryByDubboService(service string) error {
-	serviceEntryList, err := w.ic.NetworkingV1alpha3().ServiceEntries("").List(context.TODO(), metav1.ListOptions{})
-	if err != nil {
-		return fmt.Errorf("failed to list service entry: %v", err)
+func (w *ProviderWatcher) deleteServiceEntry(serviceEntry *v1alpha3.ServiceEntry) error {
+	err := w.ic.NetworkingV1alpha3().ServiceEntries(serviceEntry.Namespace).Delete(context.TODO(),
+		serviceEntry.Name, metav1.DeleteOptions{})
+	if err == nil {
+		delete(w.serviceEntryNS, serviceEntry.Name)
+		log.Infof("service entry %s/%s has been deleted", serviceEntry.Namespace, serviceEntry.Name)
+	} else if isNotFound(err) {
+		log.Infof("service entry %s/%s doesn't exist", serviceEntry.Namespace, serviceEntry.Name)
+		return nil
+	}
+	return err
+}
+
+func (w *ProviderWatcher) getServiceEntryByDubboService(service string) (map[string]*v1alpha3.ServiceEntry, error) {
+	//labelSelector := &metav1.LabelSelector{
+	//	MatchLabels:map[string]string{
+	//		"dubboservice": service,
+	//	},
+	//}
+	//labelMap, _ := metav1.LabelSelectorAsMap(labelSelector)
+	options := metav1.ListOptions{
+		//FieldSelector: labels.SelectorFromSet(labelMap).String(),
+	}
+	serviceEntryList, err := w.ic.NetworkingV1alpha3().ServiceEntries("").List(context.TODO(), options)
+	if err != nil && !isNotFound(err) {
+		return nil, fmt.Errorf("failed to list service entry: %v", err)
 	}
 
 	name := model.ConstructServiceEntryName(service)
-	var errors error = nil
+	serviceEntryMap := make(map[string]*v1alpha3.ServiceEntry)
 	for _, serviceEntry := range serviceEntryList.Items {
-		// We may have multiple interface+group+version combinations under one dubbo service/interface
 		if strings.HasPrefix(serviceEntry.Name, name) {
-			err := w.ic.NetworkingV1alpha3().ServiceEntries(serviceEntry.Namespace).Delete(context.TODO(),
-				serviceEntry.Name, metav1.DeleteOptions{})
-			if err == nil {
-				delete(w.serviceEntryNS, serviceEntry.Name)
-				log.Infof("service entry %s/%s has been deleted", serviceEntry.Namespace, serviceEntry.Name)
-			} else if isNotFound(err) {
-				log.Infof("service entry %s/%s doesn't exist", serviceEntry.Namespace, serviceEntry.Name)
-			} else {
-				errors = multierr.Append(errors, err)
-			}
+			serviceEntryMap[serviceEntry.Name] = serviceEntry.DeepCopy()
 		}
 	}
-	return errors
+	return serviceEntryMap, nil
 }
 
 func isRealError(err error) bool {
@@ -261,4 +280,30 @@ func struct2JSON(ojb interface{}) interface{} {
 		return ojb
 	}
 	return string(b)
+}
+
+func mergeServiceEntryEndpoints(zkName string, new *v1alpha3.ServiceEntry, old *v1alpha3.ServiceEntry) error {
+	if old == nil || old.Spec.WorkloadSelector != nil {
+		return nil
+	}
+	endpoints := new.Spec.Endpoints
+	for _, ep := range old.Spec.Endpoints {
+		// keep endpoints synchronized by other zk and delete old endpoints synchronized by zk configured in zkAddr
+		if ep.Labels["zkName"] != zkName {
+			endpoints = append(endpoints, ep)
+		}
+	}
+	new.Spec.Endpoints = endpoints
+	return nil
+}
+
+func filterWorkloadEntryByZkName(zkName string, serviceEntry *v1alpha3.ServiceEntry) (*v1alpha3.ServiceEntry, error) {
+	var workloadEntries []*networkingv1alpha3.WorkloadEntry
+	for _, workloadEntry := range serviceEntry.Spec.Endpoints {
+		if workloadEntry.Labels["zkName"] != zkName {
+			workloadEntries = append(workloadEntries, workloadEntry)
+		}
+	}
+	serviceEntry.Spec.Endpoints = workloadEntries
+	return serviceEntry, nil
 }
