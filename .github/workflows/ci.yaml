@@ -9,9 +9,9 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v2
       - name: Setup Go
-        uses: actions/setup-go@v1
+        uses: actions/setup-go@v2
         with:
-          go-version: 1.14.4
+          go-version: 1.16.3
       - name: Build
         run: go build -race  ./...
       - name: Test
@@ -37,7 +37,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v2
         with:
-          go-version: 1.14.4
+          go-version: 1.16.3
       - name: Install dependencies
         run: |
           go version
@@ -50,10 +50,12 @@ jobs:
     name: check go.mod and go.sum
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-go@v1
+      - name: Check out code
+        uses: actions/checkout@v2
+      - name: Setup Go
+        uses: actions/setup-go@v2
         with:
-          go-version: 1.14.4
+          go-version: 1.16.3
       - run: go mod tidy
       - name: Check for changes in go.mod or go.sum
         run: |
