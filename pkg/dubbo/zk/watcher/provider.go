@@ -17,11 +17,7 @@ package zk
 import (
 	"context"
 	"encoding/json"
-	"fmt"
-	"strings"
 	"time"
-
-	"go.uber.org/multierr"
 
 	"github.com/aeraki-framework/double2istio/pkg/dubbo/zk/model"
 
@@ -58,10 +54,11 @@ type ProviderWatcher struct {
 	conn           *zk.Conn
 	ic             *istioclient.Clientset
 	serviceEntryNS map[string]string //key service entry name, value namespace
+	zkName         string
 }
 
 // NewWatcher creates a ProviderWatcher
-func NewProviderWatcher(ic *istioclient.Clientset, conn *zk.Conn, service string) *ProviderWatcher {
+func NewProviderWatcher(ic *istioclient.Clientset, conn *zk.Conn, service string, zkName string) *ProviderWatcher {
 	path := "/dubbo/" + service + "/providers"
 	return &ProviderWatcher{
 		service:        service,
@@ -69,6 +66,7 @@ func NewProviderWatcher(ic *istioclient.Clientset, conn *zk.Conn, service string
 		conn:           conn,
 		ic:             ic,
 		serviceEntryNS: make(map[string]string),
+		zkName:         zkName,
 	}
 }
 
@@ -118,23 +116,13 @@ func (w *ProviderWatcher) Run(stop <-chan struct{}) {
 }
 
 func (w *ProviderWatcher) syncServices2IstioUntilMaxRetries(service string, providers []string) {
-	serviceEntries, err := model.ConvertServiceEntry(service, providers)
+	if len(providers) == 0 {
+		log.Warnf("Service %s has no providers, ignore synchronize job", service)
+		return
+	}
+	serviceEntries, err := model.ConvertServiceEntry(w.zkName, service, providers)
 	if err != nil {
 		log.Errorf("Failed to synchronize dubbo services to Istio: %v", err)
-	}
-
-	if len(serviceEntries) == 0 {
-		err := w.deleteServiceEntryByDubboService(service)
-		retries := 0
-		for err != nil {
-			if isRetryableError(err) && retries < maxRetries {
-				log.Errorf("Failed to delete services from Istio, error: %v,  retrying %v ...", err, retries)
-				err = w.deleteServiceEntryByDubboService(service)
-				retries++
-			} else {
-				log.Errorf("Failed to delete services from Istio: %v", err)
-			}
-		}
 	}
 
 	for _, new := range serviceEntries {
@@ -147,6 +135,7 @@ func (w *ProviderWatcher) syncServices2IstioUntilMaxRetries(service string, prov
 				retries++
 			} else {
 				log.Errorf("Failed to synchronize dubbo services to Istio: %v", err)
+				err = nil
 			}
 		}
 	}
@@ -178,8 +167,11 @@ func (w *ProviderWatcher) syncService2Istio(new *v1alpha3.ServiceEntry) error {
 	} else if isNotFound(err) {
 		return w.createServiceEntry(new)
 	} else {
+		mergeServiceEntryEndpoints(w.zkName, new, existingServiceEntry)
 		return w.updateServiceEntry(new, existingServiceEntry)
 	}
+
+	return nil
 }
 
 func (w *ProviderWatcher) createServiceEntry(serviceEntry *v1alpha3.ServiceEntry) error {
@@ -204,30 +196,17 @@ func (w *ProviderWatcher) updateServiceEntry(new *v1alpha3.ServiceEntry,
 	return err
 }
 
-func (w *ProviderWatcher) deleteServiceEntryByDubboService(service string) error {
-	serviceEntryList, err := w.ic.NetworkingV1alpha3().ServiceEntries("").List(context.TODO(), metav1.ListOptions{})
-	if err != nil {
-		return fmt.Errorf("failed to list service entry: %v", err)
+func (w *ProviderWatcher) deleteServiceEntry(serviceEntry *v1alpha3.ServiceEntry) error {
+	err := w.ic.NetworkingV1alpha3().ServiceEntries(serviceEntry.Namespace).Delete(context.TODO(),
+		serviceEntry.Name, metav1.DeleteOptions{})
+	if err == nil {
+		delete(w.serviceEntryNS, serviceEntry.Name)
+		log.Infof("service entry %s/%s has been deleted", serviceEntry.Namespace, serviceEntry.Name)
+	} else if isNotFound(err) {
+		log.Infof("service entry %s/%s doesn't exist", serviceEntry.Namespace, serviceEntry.Name)
+		return nil
 	}
-
-	name := model.ConstructServiceEntryName(service)
-	var errors error = nil
-	for _, serviceEntry := range serviceEntryList.Items {
-		// We may have multiple interface+group+version combinations under one dubbo service/interface
-		if strings.HasPrefix(serviceEntry.Name, name) {
-			err := w.ic.NetworkingV1alpha3().ServiceEntries(serviceEntry.Namespace).Delete(context.TODO(),
-				serviceEntry.Name, metav1.DeleteOptions{})
-			if err == nil {
-				delete(w.serviceEntryNS, serviceEntry.Name)
-				log.Infof("service entry %s/%s has been deleted", serviceEntry.Namespace, serviceEntry.Name)
-			} else if isNotFound(err) {
-				log.Infof("service entry %s/%s doesn't exist", serviceEntry.Namespace, serviceEntry.Name)
-			} else {
-				errors = multierr.Append(errors, err)
-			}
-		}
-	}
-	return errors
+	return err
 }
 
 func isRealError(err error) bool {
@@ -261,4 +240,19 @@ func struct2JSON(ojb interface{}) interface{} {
 		return ojb
 	}
 	return string(b)
+}
+
+func mergeServiceEntryEndpoints(zkName string, new *v1alpha3.ServiceEntry, old *v1alpha3.ServiceEntry) error {
+	if old == nil || old.Spec.WorkloadSelector != nil {
+		return nil
+	}
+	endpoints := new.Spec.Endpoints
+	for _, ep := range old.Spec.Endpoints {
+		// keep endpoints synchronized by other zk and delete old endpoints synchronized by zk configured in zkAddr
+		if ep.Labels["zkName"] != zkName {
+			endpoints = append(endpoints, ep)
+		}
+	}
+	new.Spec.Endpoints = endpoints
+	return nil
 }
