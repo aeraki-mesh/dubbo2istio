@@ -20,7 +20,7 @@ spec:
       serviceAccountName: aeraki
       containers:
         - name: aeraki
-          image: aeraki/aeraki:${BUILD_TAG}
+          image: aeraki/aeraki
           env:
             - name: istiodAddr
               value: "istiod.istio-system:15010"

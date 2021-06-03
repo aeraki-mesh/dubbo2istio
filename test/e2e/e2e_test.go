@@ -31,14 +31,13 @@ func TestMain(m *testing.M) {
 }
 
 func setup() {
-	util.CreateNamespace("dubbo", "")
 	util.LabelNamespace("dubbo", "istio-injection=enabled", "")
-	util.KubeApply("dubbo", "../../demo/k8s", "")
+	util.KubeApply("dubbo", "../../demo/k8s/zookeeper.yaml", "")
+	util.KubeApply("dubbo", "../../demo/k8s/dubbo-example.yaml", "")
 }
 
 func shutdown() {
 	util.KubeDelete("dubbo", "../../../demo/k8s", "")
-	util.DeleteNamespace("dubbo", "")
 }
 
 func TestCreateServiceEntry(t *testing.T) {

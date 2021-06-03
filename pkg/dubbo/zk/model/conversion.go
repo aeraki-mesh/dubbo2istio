@@ -227,6 +227,7 @@ func parseProvider(provider string) map[string]string {
 	return dubboAttributes
 }
 
+// ConstructServiceEntryName constructs the service entry name for a given dubbo service
 func ConstructServiceEntryName(service string) string {
 	validDNSName := strings.ReplaceAll(strings.ToLower(service), ".", "-")
 	return aerakiFieldManager + "-" + validDNSName
