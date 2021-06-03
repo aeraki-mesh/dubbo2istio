@@ -32,10 +32,13 @@ import (
 
 const (
 	defaultZKAddr = ""
+	defaultZKName = "zk"
 )
 
 func main() {
 	var zkAddr string
+	var zkName string
+	flag.StringVar(&zkName, "zkname", defaultZKName, "ZooKeeper name")
 	flag.StringVar(&zkAddr, "zkaddr", defaultZKAddr, "ZooKeeper address")
 	flag.Parse()
 
@@ -55,7 +58,7 @@ func main() {
 	}
 
 	stopChan := make(chan struct{}, 1)
-	serviceWatcher := watcher.NewServiceWatcher(conn, ic)
+	serviceWatcher := watcher.NewServiceWatcher(conn, ic, zkName)
 	go serviceWatcher.Run(stopChan)
 
 	signalChan := make(chan os.Signal, 1)
