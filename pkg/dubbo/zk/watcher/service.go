@@ -32,15 +32,17 @@ type ServiceWatcher struct {
 	conn             *zk.Conn
 	ic               *istioclient.Clientset
 	providerWatchers map[string]*ProviderWatcher
+	zkName           string
 }
 
 // NewWatcher creates a ServiceWatcher
-func NewServiceWatcher(conn *zk.Conn, clientset *istioclient.Clientset) *ServiceWatcher {
+func NewServiceWatcher(conn *zk.Conn, clientset *istioclient.Clientset, zkName string) *ServiceWatcher {
 	return &ServiceWatcher{
 		ic:               clientset,
 		path:             dubboRegistryPath,
 		conn:             conn,
 		providerWatchers: make(map[string]*ProviderWatcher),
+		zkName:           zkName,
 	}
 }
 
@@ -83,7 +85,7 @@ func (w *ServiceWatcher) watchProviders(stop <-chan struct{}) <-chan zk.Event {
 			continue
 		}
 		if _, exists := w.providerWatchers[node]; !exists {
-			providerWatcher := NewProviderWatcher(w.ic, w.conn, node)
+			providerWatcher := NewProviderWatcher(w.ic, w.conn, node, w.zkName)
 			w.providerWatchers[node] = providerWatcher
 			log.Infof("start to watch service %s on zookeeper", node)
 			go providerWatcher.Run(stop)

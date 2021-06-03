@@ -47,7 +47,7 @@ func init() {
 }
 
 // ConvertServiceEntry converts dubbo provider znode to a service entry
-func ConvertServiceEntry(service string, dubboProviders []string) (map[string]*v1alpha3.ServiceEntry, error) {
+func ConvertServiceEntry(zkName, service string, dubboProviders []string) (map[string]*v1alpha3.ServiceEntry, error) {
 	serviceEntries := make(map[string]*v1alpha3.ServiceEntry)
 
 	for _, provider := range dubboProviders {
@@ -132,6 +132,8 @@ func ConvertServiceEntry(service string, dubboProviders []string) (map[string]*v
 				log.Infof("drop invalid label: key %s, value: %s", key, value)
 			}
 		}
+		// to distinguish endpoints from different zk clusters
+		labels["zkName"] = zkName
 		serviceEntry, exist := serviceEntries[host]
 		if !exist {
 			serviceEntry = createServiceEntry(ns, host, dubboInterface, port, selector)
