@@ -83,7 +83,7 @@ spec:
             - name: AERAKI_META_APP_VERSION
               value: v2
             - name: AERAKI_META_LOCALITY
-              value: bj/800001
+              value: bj/800005
             - name: SERVICE_GROUP
               value: batchjob
           ports:
@@ -109,6 +109,7 @@ spec:
     metadata:
       labels:
         app: dubbo-sample-consumer
+        istio-locality: bj.800002
     spec:
       serviceAccountName: dubbo-consumer
       containers:
@@ -119,4 +120,3 @@ spec:
               value: demo
           ports:
             - containerPort: 9009
-
