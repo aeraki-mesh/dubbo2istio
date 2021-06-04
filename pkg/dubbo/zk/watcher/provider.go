@@ -170,6 +170,8 @@ func (w *ProviderWatcher) syncService2Istio(new *v1alpha3.ServiceEntry) error {
 		mergeServiceEntryEndpoints(w.zkName, new, existingServiceEntry)
 		return w.updateServiceEntry(new, existingServiceEntry)
 	}
+
+	return nil
 }
 
 func (w *ProviderWatcher) createServiceEntry(serviceEntry *v1alpha3.ServiceEntry) error {
