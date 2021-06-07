@@ -57,7 +57,7 @@ type ProviderWatcher struct {
 	zkName         string
 }
 
-// NewWatcher creates a ProviderWatcher
+// NewProviderWatcher creates a ProviderWatcher
 func NewProviderWatcher(ic *istioclient.Clientset, conn *zk.Conn, service string, zkName string) *ProviderWatcher {
 	path := "/dubbo/" + service + "/providers"
 	return &ProviderWatcher{
@@ -170,8 +170,6 @@ func (w *ProviderWatcher) syncService2Istio(new *v1alpha3.ServiceEntry) error {
 		mergeServiceEntryEndpoints(w.zkName, new, existingServiceEntry)
 		return w.updateServiceEntry(new, existingServiceEntry)
 	}
-
-	return nil
 }
 
 func (w *ProviderWatcher) createServiceEntry(serviceEntry *v1alpha3.ServiceEntry) error {
@@ -229,9 +227,9 @@ func struct2JSON(ojb interface{}) interface{} {
 	return string(b)
 }
 
-func mergeServiceEntryEndpoints(zkName string, new *v1alpha3.ServiceEntry, old *v1alpha3.ServiceEntry) error {
+func mergeServiceEntryEndpoints(zkName string, new *v1alpha3.ServiceEntry, old *v1alpha3.ServiceEntry) {
 	if old == nil || old.Spec.WorkloadSelector != nil {
-		return nil
+		return
 	}
 	endpoints := new.Spec.Endpoints
 	for _, ep := range old.Spec.Endpoints {
@@ -241,5 +239,4 @@ func mergeServiceEntryEndpoints(zkName string, new *v1alpha3.ServiceEntry, old *
 		}
 	}
 	new.Spec.Endpoints = endpoints
-	return nil
 }

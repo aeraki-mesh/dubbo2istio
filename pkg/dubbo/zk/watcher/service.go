@@ -35,7 +35,7 @@ type ServiceWatcher struct {
 	zkName           string
 }
 
-// NewWatcher creates a ServiceWatcher
+// NewServiceWatcher creates a ServiceWatcher
 func NewServiceWatcher(conn *zk.Conn, clientset *istioclient.Clientset, zkName string) *ServiceWatcher {
 	return &ServiceWatcher{
 		ic:               clientset,
