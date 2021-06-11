@@ -6,6 +6,7 @@ Aeraki 根据 Dubbo 服务信息和用户设置的路由规则生成数据面相
 
 如下图所示， [Aeraki + Dubbo2istio](https://github.com/aeraki-framework/aeraki) 可以协助您将 Dubbo 应用迁移到 Istio 服务网格中，
 享用到服务网格提供的高级流量管理、可见性、安全等能力，而这些无需改动一行 Dubbo 源代码。
+
 ![ dubbo2istio ](doc/dubbo2istio.png)
 
 # Demo 应用
