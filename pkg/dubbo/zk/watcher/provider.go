@@ -15,35 +15,25 @@
 package zk
 
 import (
-	"context"
-	"encoding/json"
 	"time"
 
+	"github.com/aeraki-framework/double2istio/pkg/dubbo/common"
 	"github.com/aeraki-framework/double2istio/pkg/dubbo/zk/model"
 
 	"github.com/go-zookeeper/zk"
-	"istio.io/client-go/pkg/apis/networking/v1alpha3"
 	istioclient "istio.io/client-go/pkg/clientset/versioned"
 	"istio.io/pkg/log"
-	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
-	// aerakiFieldManager is the FileldManager for Aeraki CRDs
-	aerakiFieldManager = "aeraki"
-
 	// debounceAfter is the delay added to events to wait after a registry event for debouncing.
 	// This will delay the push by at least this interval, plus the time getting subsequent events.
 	// If no change is detected the push will happen, otherwise we'll keep delaying until things settle.
-	debounceAfter = 500 * time.Millisecond
+	debounceAfter = 1 * time.Second
 
 	// debounceMax is the maximum time to wait for events while debouncing.
 	// Defaults to 10 seconds. If events keep showing up with no break for this time, we'll trigger a push.
 	debounceMax = 10 * time.Second
-
-	// the maximum retries if failed to sync dubbo services to Istio
-	maxRetries = 10
 )
 
 // ProviderWatcher watches changes on dubbo service providers and synchronize the changed dubbo providers to the Istio
@@ -53,12 +43,12 @@ type ProviderWatcher struct {
 	path           string
 	conn           *zk.Conn
 	ic             *istioclient.Clientset
-	serviceEntryNS map[string]string //key service entry name, value namespace
-	zkName         string
+	serviceEntryNS map[string]string // key service entry name, value namespace
+	registryName   string            // registryName is the globally unique name of a dubbo registry
 }
 
 // NewProviderWatcher creates a ProviderWatcher
-func NewProviderWatcher(ic *istioclient.Clientset, conn *zk.Conn, service string, zkName string) *ProviderWatcher {
+func NewProviderWatcher(ic *istioclient.Clientset, conn *zk.Conn, service string, registryName string) *ProviderWatcher {
 	path := "/dubbo/" + service + "/providers"
 	return &ProviderWatcher{
 		service:        service,
@@ -66,7 +56,7 @@ func NewProviderWatcher(ic *istioclient.Clientset, conn *zk.Conn, service string
 		conn:           conn,
 		ic:             ic,
 		serviceEntryNS: make(map[string]string),
-		zkName:         zkName,
+		registryName:   registryName,
 	}
 }
 
@@ -80,7 +70,7 @@ func (w *ProviderWatcher) Run(stop <-chan struct{}) {
 	syncCounter := 0
 
 	providers, eventChan := watchUntilSuccess(w.path, w.conn)
-	w.syncServices2IstioUntilMaxRetries(w.service, providers)
+	w.syncServices2Istio(w.service, providers)
 
 	for {
 		select {
@@ -103,7 +93,7 @@ func (w *ProviderWatcher) Run(stop <-chan struct{}) {
 					syncCounter++
 					log.Infof("Sync %s debounce stable[%d] %d: %v since last change, %v since last push",
 						w.service, syncCounter, debouncedEvents, quietTime, eventDelay)
-					w.syncServices2IstioUntilMaxRetries(w.service, providers)
+					w.syncServices2Istio(w.service, providers)
 					debouncedEvents = 0
 				}
 			} else {
@@ -115,97 +105,19 @@ func (w *ProviderWatcher) Run(stop <-chan struct{}) {
 	}
 }
 
-func (w *ProviderWatcher) syncServices2IstioUntilMaxRetries(service string, providers []string) {
+func (w *ProviderWatcher) syncServices2Istio(service string, providers []string) {
 	if len(providers) == 0 {
 		log.Warnf("Service %s has no providers, ignore synchronize job", service)
 		return
 	}
-	serviceEntries, err := model.ConvertServiceEntry(w.zkName, service, providers)
+	serviceEntries, err := model.ConvertServiceEntry(w.registryName, providers)
 	if err != nil {
 		log.Errorf("Failed to synchronize dubbo services to Istio: %v", err)
 	}
 
 	for _, new := range serviceEntries {
-		err := w.syncService2Istio(new)
-		retries := 0
-		for err != nil {
-			if isRetryableError(err) && retries < maxRetries {
-				log.Errorf("Failed to synchronize dubbo services to Istio, error: %v,  retrying %v ...", err, retries)
-				err = w.syncService2Istio(new)
-				retries++
-			} else {
-				log.Errorf("Failed to synchronize dubbo services to Istio: %v", err)
-				err = nil
-			}
-		}
+		common.SyncServices2IstioUntilMaxRetries(new, w.registryName, w.ic)
 	}
-}
-
-func (w *ProviderWatcher) syncService2Istio(new *v1alpha3.ServiceEntry) error {
-	// delete old service entry if multiple service entries found in different namespaces.
-	// Aeraki doesn't support deploying providers of the same dubbo interface in multiple namespaces because interface
-	// is used as the global dns name for dubbo service across the whole mesh
-	if oldNS, exist := w.serviceEntryNS[new.Name]; exist {
-		if oldNS != new.Namespace {
-			log.Errorf("found service entry %s in two namespaces : %s %s ,delete the older one %s/%s", new.Name, oldNS,
-				new.Namespace, oldNS, new.Name)
-			if err := w.ic.NetworkingV1alpha3().ServiceEntries(oldNS).Delete(context.TODO(), new.Name,
-				metav1.DeleteOptions{}); err != nil {
-				if isRealError(err) {
-					log.Errorf("failed to delete service entry: %s/%s", oldNS, new.Name)
-				}
-			}
-		}
-	}
-
-	existingServiceEntry, err := w.ic.NetworkingV1alpha3().ServiceEntries(new.Namespace).Get(context.TODO(), new.Name,
-		metav1.GetOptions{},
-	)
-
-	if isRealError(err) {
-		return err
-	} else if isNotFound(err) {
-		return w.createServiceEntry(new)
-	} else {
-		mergeServiceEntryEndpoints(w.zkName, new, existingServiceEntry)
-		return w.updateServiceEntry(new, existingServiceEntry)
-	}
-}
-
-func (w *ProviderWatcher) createServiceEntry(serviceEntry *v1alpha3.ServiceEntry) error {
-	_, err := w.ic.NetworkingV1alpha3().ServiceEntries(serviceEntry.Namespace).Create(context.TODO(), serviceEntry,
-		metav1.CreateOptions{FieldManager: aerakiFieldManager})
-	if err == nil {
-		w.serviceEntryNS[serviceEntry.Name] = serviceEntry.Namespace
-		log.Infof("service entry %s has been created: %s", serviceEntry.Name, struct2JSON(serviceEntry))
-	}
-	return err
-}
-
-func (w *ProviderWatcher) updateServiceEntry(new *v1alpha3.ServiceEntry,
-	old *v1alpha3.ServiceEntry) error {
-	new.Spec.Ports = old.Spec.Ports
-	new.ResourceVersion = old.ResourceVersion
-	_, err := w.ic.NetworkingV1alpha3().ServiceEntries(new.Namespace).Update(context.TODO(), new,
-		metav1.UpdateOptions{FieldManager: aerakiFieldManager})
-	if err == nil {
-		log.Infof("service entry %s has been updated: %s", new.Name, struct2JSON(new))
-	}
-	return err
-}
-
-func isRealError(err error) bool {
-	return err != nil && !errors.IsNotFound(err)
-}
-
-func isRetryableError(err error) bool {
-	return errors.IsInternalError(err) || errors.IsResourceExpired(err) || errors.IsServerTimeout(err) ||
-		errors.IsServiceUnavailable(err) || errors.IsTimeout(err) || errors.IsTooManyRequests(err) ||
-		errors.ReasonForError(err) == metav1.StatusReasonUnknown
-}
-
-func isNotFound(err error) bool {
-	return err != nil && errors.IsNotFound(err)
 }
 
 func watchUntilSuccess(path string, conn *zk.Conn) ([]string, <-chan zk.Event) {
@@ -217,26 +129,4 @@ func watchUntilSuccess(path string, conn *zk.Conn) ([]string, <-chan zk.Event) {
 		providers, _, eventChan, err = conn.ChildrenW(path)
 	}
 	return providers, eventChan
-}
-
-func struct2JSON(ojb interface{}) interface{} {
-	b, err := json.Marshal(ojb)
-	if err != nil {
-		return ojb
-	}
-	return string(b)
-}
-
-func mergeServiceEntryEndpoints(zkName string, new *v1alpha3.ServiceEntry, old *v1alpha3.ServiceEntry) {
-	if old == nil || old.Spec.WorkloadSelector != nil {
-		return
-	}
-	endpoints := new.Spec.Endpoints
-	for _, ep := range old.Spec.Endpoints {
-		// keep endpoints synchronized by other zk and delete old endpoints synchronized by zk configured in zkAddr
-		if ep.Labels["zkName"] != zkName {
-			endpoints = append(endpoints, ep)
-		}
-	}
-	new.Spec.Endpoints = endpoints
 }

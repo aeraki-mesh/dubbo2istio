@@ -16,50 +16,51 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
-	"time"
 
-	watcher "github.com/aeraki-framework/double2istio/pkg/dubbo/zk/watcher"
-	"github.com/go-zookeeper/zk"
+	"github.com/aeraki-framework/double2istio/pkg/dubbo/nacos"
+
+	"github.com/aeraki-framework/double2istio/pkg/dubbo/zk"
 	istioclient "istio.io/client-go/pkg/clientset/versioned"
 	"istio.io/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 )
 
 const (
-	defaultZKAddr = ""
-	defaultZKName = "zk"
+	defaultRegistryType = "zookeeper"
+	defaultRegistryName = "default"
 )
 
 func main() {
-	var zkAddr string
-	var zkName string
-	flag.StringVar(&zkName, "zkname", defaultZKName, "ZooKeeper name")
-	flag.StringVar(&zkAddr, "zkaddr", defaultZKAddr, "ZooKeeper address")
+	var registryType, registryName, registryAddr string
+	flag.StringVar(&registryType, "type", defaultRegistryType, "Type of the registry: zookeeper or nacos")
+	flag.StringVar(&registryName, "name", defaultRegistryName, "Name is the globally unique name for a dubbo registry")
+	flag.StringVar(&registryAddr, "addr", "", "Registry address in the form of ip:port or dns:port")
 	flag.Parse()
 
-	hosts := strings.Split(zkAddr, ",")
-	if len(hosts) == 0 || hosts[0] == "" {
-		log.Errorf("please specify zookeeper address")
-		return
-	}
-
-	conn := connectZKUntilSuccess(hosts)
-	defer conn.Close()
-
+	stopChan := make(chan struct{}, 1)
 	ic, err := getIstioClient()
 	if err != nil {
 		log.Errorf("failed to create istio client: %v", err)
 		return
 	}
 
-	stopChan := make(chan struct{}, 1)
-	serviceWatcher := watcher.NewServiceWatcher(conn, ic, zkName)
-	go serviceWatcher.Run(stopChan)
+	if registryType == "zookeeper" {
+		log.Infof("dubbo2istio runs in Zookeeper mode: registry: %s, addr: %s", registryName, registryAddr)
+		zk.NewController(registryName, registryAddr, ic).Run(stopChan)
+	} else if registryType == "nacos" {
+		log.Infof("dubbo2istio runs in Nacos mode: registry: %s, addr: %s", registryName, registryAddr)
+		nacosController, err := nacos.NewController(registryName, registryAddr, ic)
+		if err != nil {
+			log.Errorf("failed to create nacos controller :%v", err)
+		} else {
+			nacosController.Run(stopChan)
+		}
+	} else {
+		log.Errorf("unrecognized registry type: %s , dubbo2istio only supports zookeeper or nacos", registryType)
+	}
 
 	signalChan := make(chan os.Signal, 1)
 	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM)
@@ -78,24 +79,4 @@ func getIstioClient() (*istioclient.Clientset, error) {
 		return nil, err
 	}
 	return ic, nil
-}
-
-func connectZKUntilSuccess(hosts []string) *zk.Conn {
-	option := zk.WithEventCallback(callback)
-	conn, _, err := zk.Connect(hosts, time.Second*10, option)
-	//Keep trying to connect to ZK until succeed
-	for err != nil {
-		log.Errorf("failed to connect to ZooKeeper %s ,retrying : %v", hosts, err)
-		time.Sleep(time.Second)
-		conn, _, err = zk.Connect(hosts, time.Second*10, option)
-	}
-	return conn
-}
-
-func callback(event zk.Event) {
-	fmt.Println("--------ZK Event--------")
-	fmt.Println("path:", event.Path)
-	fmt.Println("type:", event.Type.String())
-	fmt.Println("state:", event.State.String())
-	fmt.Println("-------------------------")
 }
