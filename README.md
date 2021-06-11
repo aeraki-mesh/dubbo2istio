@@ -1,6 +1,6 @@
 # Dubbo2Istio
 
-Dubbo2istio 将 Dubbo ZooKeeper 服务注册表中的 Dubbo 服务自动同步到 Istio 服务网格中。
+Dubbo2istio 将 Dubbo 服务注册表中的 Dubbo 服务自动同步到 Istio 服务网格中，目前已经支持 ZooKeeper 和 Nacos。
 
 Aeraki 根据 Dubbo 服务信息和用户设置的路由规则生成数据面相关的配置，通过 Istio 下发给数据面 Envoy 中的 Dubbo proxy。
 
