@@ -1,3 +1,5 @@
+[![CI Tests](https://github.com/aeraki-framework/dubbo2istio/workflows/e2e-zookeeper/badge.svg?branch=master)](https://github.com/aeraki-framework/dubbo2istio/actions?query=branch%3Amaster+event%3Apush+workflow%3A%22e2e-zookeeper%22)
+[![CI Tests](https://github.com/aeraki-framework/dubbo2istio/workflows/e2e-nacos/badge.svg?branch=master)](https://github.com/aeraki-framework/dubbo2istio/actions?query=branch%3Amaster+event%3Apush+workflow%3A%22e2e-nacos%22)
 # Dubbo2Istio
 
 Dubbo2istio 将 Dubbo 服务注册表中的 Dubbo 服务自动同步到 Istio 服务网格中，目前已经支持 ZooKeeper 和 Nacos。
