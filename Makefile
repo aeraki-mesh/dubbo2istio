@@ -9,7 +9,7 @@ GOBIN?=$(GOPATH)/bin
 # Build parameters
 OUT?=./out
 DOCKER_TMP?=$(OUT)/docker_temp/
-DOCKER_TAG?=aeraki/dubbo2istio:latest
+DOCKER_TAG?=aeraki/dubbo2istio
 DOCKER_TAG_E2E?=aeraki/dubbo2istio:`git log --format="%H" -n 1`
 BINARY_NAME?=$(OUT)/dubbo2istio
 BINARY_NAME_DARWIN?=$(BINARY_NAME)-darwin
@@ -32,7 +32,7 @@ docker-build-e2e: build
 	cp ./docker/Dockerfile $(DOCKER_TMP)
 	cp $(BINARY_NAME) $(DOCKER_TMP)
 	docker build -t $(DOCKER_TAG_E2E) $(DOCKER_TMP)
-docker-push:
+docker-push: docker-build
 	docker push $(DOCKER_TAG)
 style-check:
 	gofmt -l -d ./

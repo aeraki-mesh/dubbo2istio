@@ -58,7 +58,10 @@ spec:
       serviceAccountName: dubbo2istio
       containers:
         - name: dubbo2istio
-          image: aeraki/dubbo2istio:${BUILD_TAG}
+          image: "aeraki/dubbo2istio"
+          imagePullPolicy: Always
           env:
-            - name: ZK_ADDR
-              value: "zookeeper.dubbo.svc.cluster.local:2181"
+            - name: REGISTRY_ADDR
+              value: "zookeeper:2181"
+            - name: REGISTRY_TYPE
+              value: "zookeeper"

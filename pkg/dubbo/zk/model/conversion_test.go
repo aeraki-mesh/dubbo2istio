@@ -35,34 +35,3 @@ func Test_parseProvider(t *testing.T) {
 		t.Errorf("parseProvider port => %v, want %v", attributes["interface"], "org.apache.dubbo.samples.basic.api.DemoService")
 	}
 }
-
-func Test_isValidLabel(t *testing.T) {
-	tests := []struct {
-		key   string
-		value string
-		want  bool
-	}{
-		{
-			key:   "method",
-			value: "testVoid%2CsayHello",
-			want:  true,
-		},
-		{
-			key:   "interface",
-			value: "org.apache.dubbo.samples.basic.api.DemoService",
-			want:  false,
-		},
-		{
-			key:   "interface",
-			value: "org.apache_dubbo-samples.basic.api.DemoService",
-			want:  false,
-		},
-	}
-	for _, tt := range tests {
-		t.Run("", func(t *testing.T) {
-			if got := isInvalidLabel(tt.key, tt.value); got != tt.want {
-				t.Errorf("isValidLabel() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}

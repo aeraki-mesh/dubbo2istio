@@ -8,10 +8,10 @@ spec:
     loadBalancer:
       localityLbSetting:
         distribute:
-        - from: bj/800002/*
-          to:
-            bj/800002/*: 90
-            bj/800005/*: 10
+          - from: bj/800002/*
+            to:
+              bj/800002/*: 90
+              bj/800005/*: 10
         enabled: true
     outlierDetection:
       baseEjectionTime: 5m

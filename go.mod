@@ -2,10 +2,13 @@ module github.com/aeraki-framework/double2istio
 
 go 1.14
 
+replace github.com/nacos-group/nacos-sdk-go => github.com/aeraki-framework/nacos-sdk-go v0.0.0-20210611053344-ca0530b4c111
+
 require (
 	github.com/go-zookeeper/zk v1.0.2
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/hashicorp/go-multierror v1.1.1
+	github.com/nacos-group/nacos-sdk-go v1.0.8
 	github.com/pkg/errors v0.9.1
 	golang.org/x/net v0.0.0-20210525063256-abc453219eb5
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c

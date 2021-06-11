@@ -1,6 +1,6 @@
 ---
 
-name: e2e-dubbo2istio
+name: e2e-zookeeper
 
 on:
   pull_request:
@@ -20,7 +20,7 @@ env:
   COMMON_DIR: test/e2e/common
 
 jobs:
-  TestSidecarOutboundConfig:
+  TestZooKeeper:
     runs-on: ubuntu-16.04
     timeout-minutes: 60
     strategy:
@@ -48,6 +48,6 @@ jobs:
       - name: Install Istio
         run: bash ${SCRIPTS_DIR}/istio.sh -y -f ${COMMON_DIR}/istio-config.yaml
       - name: Install dubbo2istio
-        run: bash ${SCRIPTS_DIR}/dubbo2istio.sh
+        run: bash ${SCRIPTS_DIR}/dubbo2istio.sh zk
       - name: test
-        run: go test -v github.com/aeraki-framework/double2istio/test/e2e/
+        run: go test -v github.com/aeraki-framework/double2istio/test/e2e/zk/

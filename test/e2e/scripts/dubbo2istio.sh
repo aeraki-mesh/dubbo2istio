@@ -6,6 +6,11 @@ export BUILD_TAG=`git log --format="%H" -n 1`
 
 BASEDIR=$(dirname "$0")
 
-envsubst < $BASEDIR/../common/dubbo2istio.yaml > dubbo2istio.yaml
+if [ "$1" == zk ]; then
+  envsubst < $BASEDIR/../common/dubbo2istio-zk.yaml > dubbo2istio.yaml
+elif [ "$1" == nacos ]; then
+  envsubst < $BASEDIR/../common/dubbo2istio-nacos.yaml > dubbo2istio.yaml
+fi
+
 kubectl create ns dubbo
 kubectl apply -f dubbo2istio.yaml -n dubbo

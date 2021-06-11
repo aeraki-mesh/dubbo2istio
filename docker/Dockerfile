@@ -1,7 +1,8 @@
 FROM alpine:3.13.5
 
-ENV ZK_ADDR=""
-ENV ZK_NAME="zk"
+ENV REGISTRY_ADDR=""
+ENV REGISTRY_NAME="default"
+ENV REGISTRY_TYPE="zookeeper"
 
 COPY dubbo2istio /usr/local/bin/
-ENTRYPOINT /usr/local/bin/dubbo2istio -zkaddr=$ZK_ADDR -zkname=$ZK_NAME
+ENTRYPOINT /usr/local/bin/dubbo2istio -type=$REGISTRY_TYPE -name=$REGISTRY_NAME -addr=$REGISTRY_ADDR
