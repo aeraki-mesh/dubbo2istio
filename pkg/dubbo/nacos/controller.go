@@ -66,7 +66,10 @@ func NewController(ncName string, ncAddr string, client *istioclient.Clientset) 
 // Run until a signal is received, this function won't block
 func (c *Controller) Run(stop <-chan struct{}) {
 	go c.watchNamespace(stop)
+	go c.watchService(stop)
+}
 
+func (c *Controller) watchService(stop <-chan struct{}) {
 	var timeChan <-chan time.Time
 	var startDebounce time.Time
 	var lastResourceUpdateTime time.Time
