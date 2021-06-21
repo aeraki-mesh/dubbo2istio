@@ -1,0 +1,78 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    app: etcd
+    etcd_node: etcd
+  name: etcd
+spec:
+  containers:
+    - command:
+        - /usr/local/bin/etcd
+        - --name
+        - etcd
+        - --initial-advertise-peer-urls
+        - http://etcd:2380
+        - --listen-peer-urls
+        - http://0.0.0.0:2380
+        - --listen-client-urls
+        - http://0.0.0.0:2379
+        - --advertise-client-urls
+        - http://etcd:2379
+        - --initial-cluster
+        - etcd=http://etcd:2380
+        - --initial-cluster-state
+        - new
+        - --debug=true
+        - --log-output=stdout
+      image: quay.io/coreos/etcd:latest
+      name: etcd
+      ports:
+        - containerPort: 2379
+          name: client
+          protocol: TCP
+        - containerPort: 2380
+          name: server
+          protocol: TCP
+  restartPolicy: Always
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    etcd_node: etcd
+  name: etcd
+spec:
+  ports:
+    - name: tcp-client
+      port: 2379
+      protocol: TCP
+      targetPort: 2379
+    - name: tcp-server
+      port: 2380
+      protocol: TCP
+      targetPort: 2380
+  selector:
+    etcd_node: etcd
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    etcd_node: etcd
+  name: etcd-aeraki
+spec:
+  ports:
+    - name: tcp-client
+      port: 2379
+      protocol: TCP
+      targetPort: 2379
+    - name: tcp-server
+      port: 2380
+      protocol: TCP
+      targetPort: 2380
+  selector:
+    etcd_node: etcd

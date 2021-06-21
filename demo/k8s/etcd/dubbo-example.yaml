@@ -1,0 +1,122 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dubbo-sample-provider-v1
+  labels:
+    app: dubbo-sample-provider
+spec:
+  selector:
+    matchLabels:
+      app: dubbo-sample-provider
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: dubbo-sample-provider
+        version: v1
+    spec:
+      containers:
+        - name: dubbo-sample-provider
+          image: aeraki/dubbo-sample-provider
+          imagePullPolicy: Always
+          env:
+            - name: REGISTRY_ADDR
+              value: etcd3://etcd:2379
+            - name: REGISTER
+              value: "true"
+            - name: AERAKI_META_APP_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: AERAKI_META_APP_SERVICE_ACCOUNT
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.serviceAccountName
+            - name: AERAKI_META_WORKLOAD_SELECTOR
+              value: "dubbo-sample-provider"     # The deployment must have a label: app:dubbo-sample-provider
+            - name: AERAKI_META_APP_VERSION
+              value: v1
+            - name: AERAKI_META_LOCALITY
+              value: bj/800002
+            - name: SERVICE_GROUP
+              value: user
+          ports:
+            - containerPort: 20880
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dubbo-sample-provider-v2
+  labels:
+    app: dubbo-sample-provider
+spec:
+  selector:
+    matchLabels:
+      app: dubbo-sample-provider
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: dubbo-sample-provider
+        version: v2
+    spec:
+      containers:
+        - name: dubbo-sample-provider
+          image: aeraki/dubbo-sample-provider
+          imagePullPolicy: Always
+          env:
+            - name: REGISTRY_ADDR
+              value: etcd3://etcd:2379
+            - name: REGISTER
+              value: "true"
+            - name: AERAKI_META_APP_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: AERAKI_META_APP_SERVICE_ACCOUNT
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.serviceAccountName
+            - name: AERAKI_META_WORKLOAD_SELECTOR
+              value: "dubbo-sample-provider"     # The deployment must have a label: app:dubbo-sample-provider
+            - name: AERAKI_META_APP_VERSION
+              value: v2
+            - name: AERAKI_META_LOCALITY
+              value: bj/800005
+            - name: SERVICE_GROUP
+              value: batchjob
+          ports:
+            - containerPort: 20880
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: dubbo-consumer
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dubbo-sample-consumer
+  labels:
+    app: dubbo-sample-consumer
+spec:
+  selector:
+    matchLabels:
+      app: dubbo-sample-consumer
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: dubbo-sample-consumer
+        istio-locality: bj.800002
+    spec:
+      serviceAccountName: dubbo-consumer
+      containers:
+        - name: dubbo-sample-consumer
+          image: aeraki/dubbo-sample-consumer
+          env:
+            - name: mode
+              value: demo
+          ports:
+            - containerPort: 9009
