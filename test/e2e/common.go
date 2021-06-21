@@ -28,8 +28,8 @@ func TestCreateServiceEntry(t *testing.T) {
 	if err != nil {
 		t.Errorf("failed to wait for deployment: %v", err)
 	}
-	//wait 60 seconds for service entries to be created
-	time.Sleep(60 * time.Second)
+	//wait 120 seconds for service entries to be created
+	time.Sleep(120 * time.Second)
 
 	serviceEntries, err := util.KubeGetYaml("dubbo", "serviceentry", "", "")
 	if err != nil {
