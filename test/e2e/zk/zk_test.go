@@ -37,8 +37,8 @@ func setup() {
 }
 
 func shutdown() {
-	//util.KubeDelete("dubbo", "../../demo/k8s/zk/zookeeper.yaml", "")
-	//util.KubeDelete("dubbo", "../../demo/k8s/zk/dubbo-example.yaml", "")
+	util.KubeDelete("dubbo", "../../../demo/k8s/zk/zookeeper.yaml", "")
+	util.KubeDelete("dubbo", "../../../demo/k8s/zk/dubbo-example.yaml", "")
 }
 
 func TestCreateServiceEntry(t *testing.T) {
