@@ -7,12 +7,6 @@ on:
     paths-ignore:
       - '**.md'
       - 'docs/**'
-  push:
-    paths-ignore:
-      - '**.md'
-      - 'docs/**'
-    branches:
-      - '*'
 
 env:
   ISTIO_VERSION: 1.10.0
