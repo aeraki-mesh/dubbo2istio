@@ -20,6 +20,8 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/aeraki-framework/double2istio/pkg/dubbo/etcd"
+
 	"github.com/aeraki-framework/double2istio/pkg/dubbo/nacos"
 
 	"github.com/aeraki-framework/double2istio/pkg/dubbo/zk"
@@ -58,6 +60,9 @@ func main() {
 		} else {
 			nacosController.Run(stopChan)
 		}
+	} else if registryType == "etcd" {
+		log.Infof("dubbo2istio runs in Etcd mode: registry: %s, addr: %s", registryName, registryAddr)
+		etcd.NewController(registryName, registryAddr, ic).Run(stopChan)
 	} else {
 		log.Errorf("unrecognized registry type: %s , dubbo2istio only supports zookeeper or nacos", registryType)
 	}

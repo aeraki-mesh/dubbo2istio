@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package nacos
+package etcd
 
 import (
 	"os"
 	"testing"
 
 	"github.com/aeraki-framework/double2istio/test/e2e"
+
 	"github.com/aeraki-framework/double2istio/test/e2e/util"
 )
 
@@ -31,13 +32,13 @@ func TestMain(m *testing.M) {
 
 func setup() {
 	util.LabelNamespace("dubbo", "istio-injection=enabled", "")
-	util.KubeApply("dubbo", "../../../demo/k8s/nacos/nacos.yaml", "")
-	util.KubeApply("dubbo", "../../../demo/k8s/nacos/dubbo-example.yaml", "")
+	util.KubeApply("dubbo", "../../../demo/k8s/etcd/etcd.yaml", "")
+	util.KubeApply("dubbo", "../../../demo/k8s/etcd/dubbo-example.yaml", "")
 }
 
 func shutdown() {
-	util.KubeDelete("dubbo", "../../demo/k8s/nacos/nacos.yaml", "")
-	util.KubeDelete("dubbo", "../../demo/k8s/nacos/dubbo-example.yaml", "")
+	util.KubeDelete("dubbo", "../../demo/k8s/etcd/etcd.yaml", "")
+	util.KubeDelete("dubbo", "../../demo/k8s/etcd/dubbo-example.yaml", "")
 }
 
 func TestCreateServiceEntry(t *testing.T) {

@@ -10,8 +10,11 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/nacos-group/nacos-sdk-go v1.0.8
 	github.com/pkg/errors v0.9.1
+	go.etcd.io/etcd/api/v3 v3.5.0
+	go.etcd.io/etcd/client/v3 v3.5.0
 	golang.org/x/net v0.0.0-20210525063256-abc453219eb5
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
+	google.golang.org/grpc v1.38.0
 	istio.io/api v0.0.0-20210601145914-9a4239731e79
 	istio.io/client-go v0.0.0-20210601151459-89ee09f12704
 	istio.io/istio v0.0.0-20210603041206-aa439f6e4772
