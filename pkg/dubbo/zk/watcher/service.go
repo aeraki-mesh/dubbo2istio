@@ -80,8 +80,8 @@ func (w *ServiceWatcher) waitFroDubboRootPath() {
 func (w *ServiceWatcher) watchProviders(stop <-chan struct{}) <-chan zk.Event {
 	children, newChan := watchUntilSuccess(w.path, w.conn)
 	for _, node := range children {
-		//skip conig node
-		if node == "config" {
+		//skip conig and metadata node
+		if node == "config" || node == "metadata" {
 			continue
 		}
 		if _, exists := w.providerWatchers[node]; !exists {

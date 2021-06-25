@@ -18,21 +18,20 @@ import (
 	"context"
 	"time"
 
+	"github.com/zhaohuabing/debounce"
 	"google.golang.org/grpc/stats"
-
-	"github.com/aeraki-framework/double2istio/pkg/dubbo/common"
 
 	"istio.io/pkg/log"
 )
 
 type connHandler struct {
 	stats.Handler
-	*common.Debouncer
+	*debounce.Debouncer
 }
 
 func newConnHandler(callback func(), stop <-chan struct{}) *connHandler {
 	handler := &connHandler{
-		Debouncer: common.NewDebouncer(5*time.Second, 10*time.Second, callback, stop),
+		Debouncer: debounce.New(5*time.Second, 10*time.Second, callback, stop),
 	}
 	return handler
 }
