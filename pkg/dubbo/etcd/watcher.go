@@ -18,7 +18,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/aeraki-framework/double2istio/pkg/dubbo/common"
+	"github.com/zhaohuabing/debounce"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
 	istioclient "istio.io/client-go/pkg/clientset/versioned"
@@ -71,7 +71,7 @@ func (w *watcher) watchService() {
 			w.processChangedService(service)
 		}
 	}
-	debouncer := common.NewDebouncer(debounceAfter, debounceMax, callback, w.stopChan)
+	debouncer := debounce.New(debounceAfter, debounceMax, callback, w.stopChan)
 	for {
 		select {
 		case response, more := <-watchChanel:

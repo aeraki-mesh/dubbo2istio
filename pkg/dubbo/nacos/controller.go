@@ -15,11 +15,14 @@
 package nacos
 
 import (
+	"sync"
 	"time"
 
 	"github.com/aeraki-framework/double2istio/pkg/dubbo/common"
+
 	"github.com/aeraki-framework/double2istio/pkg/dubbo/nacos/watcher"
 	"github.com/nacos-group/nacos-sdk-go/clients/naming_client"
+	"github.com/zhaohuabing/debounce"
 	istioclient "istio.io/client-go/pkg/clientset/versioned"
 	"istio.io/pkg/log"
 )
@@ -37,6 +40,7 @@ const (
 
 // Controller contains the runtime configuration for a Nacos controller
 type Controller struct {
+	mutex            sync.Mutex
 	registryName     string // registryName is the globally unique name of a dubbo registry
 	ncAddr           string
 	ic               *istioclient.Clientset
@@ -70,43 +74,25 @@ func (c *Controller) Run(stop <-chan struct{}) {
 }
 
 func (c *Controller) watchService(stop <-chan struct{}) {
-	var timeChan <-chan time.Time
-	var startDebounce time.Time
-	var lastResourceUpdateTime time.Time
-	debouncedEvents := 0
-	syncCounter := 0
 	changedServices := make([]common.DubboServiceInstance, 0)
+
+	callback := func() {
+		c.mutex.Lock()
+		defer c.mutex.Unlock()
+		serviceEntries := common.ConvertServiceEntry(c.registryName, changedServices)
+		for _, new := range serviceEntries {
+			common.SyncServices2IstioUntilMaxRetries(new, c.registryName, c.ic)
+		}
+	}
+	debouncer := debounce.New(debounceAfter, debounceMax, callback, stop)
 
 	for {
 		select {
 		case services := <-c.eventChan:
+			c.mutex.Lock()
 			changedServices = append(changedServices, services...)
-			lastResourceUpdateTime = time.Now()
-			if debouncedEvents == 0 {
-				log.Debugf("This is the first debounced event")
-				startDebounce = lastResourceUpdateTime
-			}
-			debouncedEvents++
-			timeChan = time.After(debounceAfter)
-		case <-timeChan:
-			log.Debugf("Receive event from time chanel")
-			eventDelay := time.Since(startDebounce)
-			quietTime := time.Since(lastResourceUpdateTime)
-			// it has been too long since the first debounced event or quiet enough since the last debounced event
-			if eventDelay >= debounceMax || quietTime >= debounceAfter {
-				if debouncedEvents > 0 {
-					syncCounter++
-					log.Infof("Sync %v services, debounce stable[%d] %d: %v since last change, %v since last push",
-						len(changedServices), syncCounter, debouncedEvents, quietTime, eventDelay)
-					serviceEntries := common.ConvertServiceEntry(c.registryName, changedServices)
-					for _, new := range serviceEntries {
-						common.SyncServices2IstioUntilMaxRetries(new, c.registryName, c.ic)
-					}
-					debouncedEvents = 0
-				}
-			} else {
-				timeChan = time.After(debounceAfter - quietTime)
-			}
+			c.mutex.Unlock()
+			debouncer.Bounce()
 		case <-stop:
 			return
 		}

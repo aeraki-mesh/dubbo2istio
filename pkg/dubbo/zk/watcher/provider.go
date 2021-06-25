@@ -15,7 +15,10 @@
 package zk
 
 import (
+	"sync"
 	"time"
+
+	"github.com/zhaohuabing/debounce"
 
 	"github.com/aeraki-framework/double2istio/pkg/dubbo/common"
 	"github.com/aeraki-framework/double2istio/pkg/dubbo/zk/model"
@@ -29,7 +32,7 @@ const (
 	// debounceAfter is the delay added to events to wait after a registry event for debouncing.
 	// This will delay the push by at least this interval, plus the time getting subsequent events.
 	// If no change is detected the push will happen, otherwise we'll keep delaying until things settle.
-	debounceAfter = 1 * time.Second
+	debounceAfter = 3 * time.Second
 
 	// debounceMax is the maximum time to wait for events while debouncing.
 	// Defaults to 10 seconds. If events keep showing up with no break for this time, we'll trigger a push.
@@ -39,6 +42,7 @@ const (
 // ProviderWatcher watches changes on dubbo service providers and synchronize the changed dubbo providers to the Istio
 // control plane via service entries
 type ProviderWatcher struct {
+	mutex          sync.Mutex
 	service        string
 	path           string
 	conn           *zk.Conn
@@ -63,42 +67,22 @@ func NewProviderWatcher(ic *istioclient.Clientset, conn *zk.Conn, service string
 // Run starts the ProviderWatcher until it receives a message over the stop chanel
 // This method blocks the caller
 func (w *ProviderWatcher) Run(stop <-chan struct{}) {
-	var timeChan <-chan time.Time
-	var startDebounce time.Time
-	var lastResourceUpdateTime time.Time
-	debouncedEvents := 0
-	syncCounter := 0
-
 	providers, eventChan := watchUntilSuccess(w.path, w.conn)
 	w.syncServices2Istio(w.service, providers)
 
+	callback := func() {
+		w.mutex.Lock()
+		defer w.mutex.Unlock()
+		w.syncServices2Istio(w.service, providers)
+	}
+	debouncer := debounce.New(debounceAfter, debounceMax, callback, stop)
 	for {
 		select {
 		case <-eventChan:
-			lastResourceUpdateTime = time.Now()
-			if debouncedEvents == 0 {
-				log.Debugf("This is the first debounced event")
-				startDebounce = lastResourceUpdateTime
-			}
-			debouncedEvents++
-			timeChan = time.After(debounceAfter)
+			w.mutex.Lock()
 			providers, eventChan = watchUntilSuccess(w.path, w.conn)
-		case <-timeChan:
-			log.Debugf("Receive event from time chanel")
-			eventDelay := time.Since(startDebounce)
-			quietTime := time.Since(lastResourceUpdateTime)
-			// it has been too long since the first debounced event or quiet enough since the last debounced event
-			if eventDelay >= debounceMax || quietTime >= debounceAfter {
-				if debouncedEvents > 0 {
-					syncCounter++
-					log.Infof("Sync %s debounce stable[%d] %d: %v since last change, %v since last push",
-						w.service, syncCounter, debouncedEvents, quietTime, eventDelay)
-					w.syncServices2Istio(w.service, providers)
-					debouncedEvents = 0
-				}
-			} else {
-				timeChan = time.After(debounceAfter - quietTime)
-			}
+			w.mutex.Unlock()
+			debouncer.Bounce()
 		case <-stop:
 			return
 		}

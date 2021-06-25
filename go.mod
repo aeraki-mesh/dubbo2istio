@@ -10,6 +10,7 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/nacos-group/nacos-sdk-go v1.0.8
 	github.com/pkg/errors v0.9.1
+	github.com/zhaohuabing/debounce v1.0.0
 	go.etcd.io/etcd/api/v3 v3.5.0
 	go.etcd.io/etcd/client/v3 v3.5.0
 	golang.org/x/net v0.0.0-20210525063256-abc453219eb5
