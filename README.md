@@ -30,7 +30,7 @@ kubectl create ns dubbo
 kubectl label namespace dubbo istio.io/rev=1-8-1
 # Istio 1.9
 # kubectl label namespace dubbo istio-injection=enabled
-g clone https://github.com/aeraki-framework/dubbo2istio.git
+git clone https://github.com/aeraki-framework/dubbo2istio.git
 cd dubbo2istio
 kubectl apply -f demo/k8s/ -n dubbo
 ```
