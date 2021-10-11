@@ -18,7 +18,7 @@ Aeraki 提供了一个 Dubbo Demo 应用，用于使用该 Demo 来测试 Dubbo 
 * [Demo k8s 部署文件下载](https://github.com/aeraki-framework/dubbo2istio/tree/master/demo)
 * [Demo Dubbo 程序源码下载](https://github.com/aeraki-framework/dubbo-envoyfilter-example)
 
-备注：该 Demo 应用基于开源 Istio 1.9 + Aeraki 运行，也可以在开通了 Dubbo 服务支持的 
+备注：该 Demo 应用基于开源 Istio + Aeraki 运行，也可以在开通了 Dubbo 服务支持的 
 [腾讯云 TCM (Tencent Cloud Mesh)](https://console.cloud.tencent.com/tke2/mesh?rid=8) 托管服务网格上运行。
 
 ## 安装 Demo 应用
@@ -26,13 +26,13 @@ Aeraki 提供了一个 Dubbo Demo 应用，用于使用该 Demo 来测试 Dubbo 
 执行下面的命令安装 Dubbo Demo 应用：
 ```bash
 kubectl create ns dubbo
+# Istio
+kubectl label namespace dubbo istio-injection=enabled
 # TCM
-kubectl label namespace dubbo istio.io/rev=1-8-1
-# Istio 1.9
-# kubectl label namespace dubbo istio-injection=enabled
+# kubectl label namespace dubbo istio.io/rev=1-8-1
 g clone https://github.com/aeraki-framework/dubbo2istio.git
 cd dubbo2istio
-kubectl apply -f demo/k8s/ -n dubbo
+kubectl apply -f demo/k8s/zk -n dubbo
 ```
 稍等片刻后验证部署的 dubbo Demo 应用。
 
