@@ -46,7 +46,7 @@ func NewServiceWatcher(conn *zk.Conn, clientset *istioclient.Clientset, registry
 	}
 }
 
-// Run starts the ServiceWatcher until it receives a message over the stop chanel
+// Run starts the ServiceWatcher until it receives a message over the stop channel
 // This method blocks the caller
 func (w *ServiceWatcher) Run(stop <-chan struct{}) {
 	w.waitFroDubboRootPath()
@@ -80,7 +80,7 @@ func (w *ServiceWatcher) waitFroDubboRootPath() {
 func (w *ServiceWatcher) watchProviders(stop <-chan struct{}) <-chan zk.Event {
 	children, newChan := watchUntilSuccess(w.path, w.conn)
 	for _, node := range children {
-		//skip conig and metadata node
+		//skip config and metadata node
 		if node == "config" || node == "metadata" {
 			continue
 		}

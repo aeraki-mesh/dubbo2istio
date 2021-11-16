@@ -60,7 +60,7 @@ func (w *watcher) stop() {
 func (w *watcher) watchService() {
 	log.Info("start to watch etcd")
 	ctx, cancel := context.WithCancel(context.Background())
-	watchChanel := w.etcdClient.Watch(clientv3.WithRequireLeader(ctx), "/dubbo", clientv3.WithPrefix())
+	watchChannel := w.etcdClient.Watch(clientv3.WithRequireLeader(ctx), "/dubbo", clientv3.WithPrefix())
 	changedServices := make(map[string]string)
 
 	callback := func() {
@@ -74,11 +74,11 @@ func (w *watcher) watchService() {
 	debouncer := debounce.New(debounceAfter, debounceMax, callback, w.stopChan)
 	for {
 		select {
-		case response, more := <-watchChanel:
+		case response, more := <-watchChannel:
 			if err := response.Err(); err != nil || !more {
 				log.Errorf("failed to watch etcd: %v", err)
 				ctx, cancel = context.WithCancel(context.Background())
-				watchChanel = w.etcdClient.Watch(clientv3.WithRequireLeader(ctx), "/dubbo", clientv3.WithPrefix())
+				watchChannel = w.etcdClient.Watch(clientv3.WithRequireLeader(ctx), "/dubbo", clientv3.WithPrefix())
 			}
 			serviceMutex.Lock()
 			for _, event := range response.Events {

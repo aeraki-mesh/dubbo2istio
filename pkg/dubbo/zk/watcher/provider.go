@@ -64,7 +64,7 @@ func NewProviderWatcher(ic *istioclient.Clientset, conn *zk.Conn, service string
 	}
 }
 
-// Run starts the ProviderWatcher until it receives a message over the stop chanel
+// Run starts the ProviderWatcher until it receives a message over the stop channel
 // This method blocks the caller
 func (w *ProviderWatcher) Run(stop <-chan struct{}) {
 	providers, eventChan := watchUntilSuccess(w.path, w.conn)
