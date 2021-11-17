@@ -46,7 +46,7 @@ func NewServiceWatcher(conn *zk.Conn, clientset *istioclient.Clientset, registry
 	}
 }
 
-// Run starts the ServiceWatcher until it receives a message over the stop channel
+// Run starts the ServiceWatcher until it receives a message over the stop channel.
 // This method blocks the caller
 func (w *ServiceWatcher) Run(stop <-chan struct{}) {
 	w.waitFroDubboRootPath()
