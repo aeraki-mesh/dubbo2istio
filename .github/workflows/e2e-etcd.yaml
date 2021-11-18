@@ -35,7 +35,6 @@ jobs:
       - name: Install dependencies
         run: |
           go version
-          go get golang.org/x/tools/cmd/goimports
       - name: build docker
         run: make docker-build-e2e
       - name: Prepare envrionment
