@@ -19,7 +19,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/aeraki-framework/double2istio/pkg/dubbo/common"
+	"github.com/aeraki-framework/dubbo2istio/pkg/dubbo/common"
 
 	"istio.io/client-go/pkg/apis/networking/v1alpha3"
 	"istio.io/pkg/log"

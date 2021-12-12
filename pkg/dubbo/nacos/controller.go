@@ -18,9 +18,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/aeraki-framework/double2istio/pkg/dubbo/common"
+	"github.com/aeraki-framework/dubbo2istio/pkg/dubbo/common"
 
-	"github.com/aeraki-framework/double2istio/pkg/dubbo/nacos/watcher"
+	"github.com/aeraki-framework/dubbo2istio/pkg/dubbo/nacos/watcher"
 	"github.com/nacos-group/nacos-sdk-go/clients/naming_client"
 	"github.com/zhaohuabing/debounce"
 	istioclient "istio.io/client-go/pkg/clientset/versioned"

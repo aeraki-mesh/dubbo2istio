@@ -20,11 +20,11 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/aeraki-framework/double2istio/pkg/dubbo/etcd"
+	"github.com/aeraki-framework/dubbo2istio/pkg/dubbo/etcd"
 
-	"github.com/aeraki-framework/double2istio/pkg/dubbo/nacos"
+	"github.com/aeraki-framework/dubbo2istio/pkg/dubbo/nacos"
 
-	"github.com/aeraki-framework/double2istio/pkg/dubbo/zk"
+	"github.com/aeraki-framework/dubbo2istio/pkg/dubbo/zk"
 	istioclient "istio.io/client-go/pkg/clientset/versioned"
 	"istio.io/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"

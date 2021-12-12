@@ -17,8 +17,8 @@ package watcher
 import (
 	"time"
 
-	"github.com/aeraki-framework/double2istio/pkg/dubbo/common"
-	"github.com/aeraki-framework/double2istio/pkg/dubbo/nacos/model"
+	"github.com/aeraki-framework/dubbo2istio/pkg/dubbo/common"
+	"github.com/aeraki-framework/dubbo2istio/pkg/dubbo/nacos/model"
 	"github.com/nacos-group/nacos-sdk-go/clients/naming_client"
 	nacosmodel "github.com/nacos-group/nacos-sdk-go/model"
 	"github.com/nacos-group/nacos-sdk-go/vo"

@@ -18,7 +18,7 @@ import (
 	"strings"
 	"time"
 
-	watcher "github.com/aeraki-framework/double2istio/pkg/dubbo/zk/watcher"
+	watcher "github.com/aeraki-framework/dubbo2istio/pkg/dubbo/zk/watcher"
 	"github.com/go-zookeeper/zk"
 	istioclient "istio.io/client-go/pkg/clientset/versioned"
 	"istio.io/pkg/log"
