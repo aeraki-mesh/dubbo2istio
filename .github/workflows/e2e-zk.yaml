@@ -49,4 +49,4 @@ jobs:
       - name: Install dubbo2istio
         run: bash ${SCRIPTS_DIR}/dubbo2istio.sh zk
       - name: test
-        run: go test -v github.com/aeraki-framework/double2istio/test/e2e/zk/
+        run: go test -v github.com/aeraki-mesh/double2istio/test/e2e/zk/

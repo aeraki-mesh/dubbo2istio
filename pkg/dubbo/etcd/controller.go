@@ -20,8 +20,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/aeraki-framework/double2istio/pkg/dubbo/common"
-	"github.com/aeraki-framework/double2istio/pkg/dubbo/zk/model"
+	"github.com/aeraki-mesh/double2istio/pkg/dubbo/common"
+	"github.com/aeraki-mesh/double2istio/pkg/dubbo/zk/model"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"google.golang.org/grpc"

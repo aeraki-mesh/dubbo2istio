@@ -15,7 +15,7 @@
 package model
 
 import (
-	"github.com/aeraki-framework/double2istio/pkg/dubbo/common"
+	"github.com/aeraki-mesh/double2istio/pkg/dubbo/common"
 
 	nacosmodel "github.com/nacos-group/nacos-sdk-go/model"
 	"istio.io/pkg/log"

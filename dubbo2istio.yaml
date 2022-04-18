@@ -52,16 +52,14 @@ spec:
   replicas: 1
   template:
     metadata:
-      annotations:
-        sidecar.istio.io/inject: "false"
       labels:
         app: dubbo2istio
     spec:
       serviceAccountName: dubbo2istio
       containers:
         - name: dubbo2istio
-          image: "aeraki/dubbo2istio"
-          imagePullPolicy: Always
+          image: aeraki/dubbo2istio:d3a6a5b4146f51690d4a399bceb8f2535fb4dc54
+          imagePullPolicy: Never  # Set ImagePullPolicy to Never to enforce MiniKube use local image
           env:
             - name: REGISTRY_ADDR
               value: "zookeeper:2181"

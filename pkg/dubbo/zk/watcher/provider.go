@@ -20,8 +20,8 @@ import (
 
 	"github.com/zhaohuabing/debounce"
 
-	"github.com/aeraki-framework/double2istio/pkg/dubbo/common"
-	"github.com/aeraki-framework/double2istio/pkg/dubbo/zk/model"
+	"github.com/aeraki-mesh/double2istio/pkg/dubbo/common"
+	"github.com/aeraki-mesh/double2istio/pkg/dubbo/zk/model"
 
 	"github.com/go-zookeeper/zk"
 	istioclient "istio.io/client-go/pkg/clientset/versioned"

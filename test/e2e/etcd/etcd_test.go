@@ -18,9 +18,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/aeraki-framework/double2istio/test/e2e"
+	"github.com/aeraki-mesh/double2istio/test/e2e"
 
-	"github.com/aeraki-framework/double2istio/test/e2e/util"
+	"github.com/aeraki-mesh/double2istio/test/e2e/util"
 )
 
 func TestMain(m *testing.M) {
@@ -31,14 +31,15 @@ func TestMain(m *testing.M) {
 }
 
 func setup() {
-	util.LabelNamespace("dubbo", "istio-injection=enabled", "")
+	util.KubeApply("dubbo", "../../../demo/k8s/aeraki-bootstrap-config.yaml", "")
 	util.KubeApply("dubbo", "../../../demo/k8s/etcd/etcd.yaml", "")
+	util.LabelNamespace("dubbo", "istio-injection=enabled", "")
 	util.KubeApply("dubbo", "../../../demo/k8s/etcd/dubbo-example.yaml", "")
 }
 
 func shutdown() {
-//	util.KubeDelete("dubbo", "../../../demo/k8s/etcd/etcd.yaml", "")
-//	util.KubeDelete("dubbo", "../../../demo/k8s/etcd/dubbo-example.yaml", "")
+	//	util.KubeDelete("dubbo", "../../../demo/k8s/etcd/etcd.yaml", "")
+	//	util.KubeDelete("dubbo", "../../../demo/k8s/etcd/dubbo-example.yaml", "")
 }
 
 func TestCreateServiceEntry(t *testing.T) {

@@ -115,8 +115,8 @@ github.com/Shopify/toxiproxy v2.1.4+incompatible/go.mod h1:OXgGpZ6Cli1/URJOF1DMx
 github.com/VividCortex/ewma v1.1.1 h1:MnEK4VOv6n0RSY4vtRe3h11qjxL3+t0B8yOL8iMXdcM=
 github.com/VividCortex/ewma v1.1.1/go.mod h1:2Tkkvm3sRDVXaiyucHiACn4cqf7DpdyLvmxzcbUokwA=
 github.com/VividCortex/gohistogram v1.0.0/go.mod h1:Pf5mBqqDxYaXu3hDrrU+w6nw50o/4+TcAqDqk/vUH7g=
-github.com/aeraki-framework/nacos-sdk-go v0.0.0-20210611053344-ca0530b4c111 h1:fNFCKxEGHoMozntk6dPzjhixwXHJcymkUr+Kr2RyDjs=
-github.com/aeraki-framework/nacos-sdk-go v0.0.0-20210611053344-ca0530b4c111/go.mod h1:hlAPn3UdzlxIlSILAyOXKxjFSvDJ9oLzTJ9hLAK1KzA=
+github.com/aeraki-mesh/nacos-sdk-go v0.0.0-20210611053344-ca0530b4c111 h1:HNzNHp+6NwI3VNWcfA/H7ZGrLgBMFN8SLI/8VKo0NW8=
+github.com/aeraki-mesh/nacos-sdk-go v0.0.0-20210611053344-ca0530b4c111/go.mod h1:hlAPn3UdzlxIlSILAyOXKxjFSvDJ9oLzTJ9hLAK1KzA=
 github.com/afex/hystrix-go v0.0.0-20180502004556-fa1af6a1f4f5/go.mod h1:SkGFH1ia65gfNATL8TAiHDNxPzPdmEL5uirI2Uyuz6c=
 github.com/agnivade/levenshtein v1.0.1/go.mod h1:CURSv5d9Uaml+FovSIICkLbAUZ9S4RqaHDIsdSBg7lM=
 github.com/ahmetb/gen-crd-api-reference-docs v0.2.1-0.20201224172655-df869c1245d4/go.mod h1:TdjdkYhlOifCQWPs1UdTma97kQQMozf5h26hTuG70u8=

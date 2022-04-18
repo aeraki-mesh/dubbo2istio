@@ -19,7 +19,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aeraki-framework/double2istio/test/e2e/util"
+	"github.com/aeraki-mesh/double2istio/test/e2e/util"
 )
 
 // TestCreateServiceEntry tests creating service entry
