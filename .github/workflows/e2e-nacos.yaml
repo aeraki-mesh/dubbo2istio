@@ -49,4 +49,4 @@ jobs:
       - name: Install dubbo2istio
         run: bash ${SCRIPTS_DIR}/dubbo2istio.sh nacos
       - name: test
-        run: go test -v github.com/aeraki-mesh/double2istio/test/e2e/nacos/
+        run: go test -v github.com/aeraki-mesh/dubbo2istio/test/e2e/nacos/

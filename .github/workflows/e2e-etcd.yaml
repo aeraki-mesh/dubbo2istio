@@ -48,4 +48,4 @@ jobs:
       - name: Install dubbo2istio
         run: bash ${SCRIPTS_DIR}/dubbo2istio.sh etcd
       - name: test
-        run: go test -v github.com/aeraki-mesh/double2istio/test/e2e/etcd/
+        run: go test -v github.com/aeraki-mesh/dubbo2istio/test/e2e/etcd/
