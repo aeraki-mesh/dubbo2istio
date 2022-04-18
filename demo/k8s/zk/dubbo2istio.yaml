@@ -37,7 +37,7 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: dubbo2istio
-    namespace: dubbo
+    namespace: meta-dubbo
 ---
 apiVersion: apps/v1
 kind: Deployment

@@ -24,14 +24,14 @@ import (
 
 // TestCreateServiceEntry tests creating service entry
 func TestCreateServiceEntry(t *testing.T) {
-	err := util.WaitForDeploymentsReady("dubbo", 10*time.Minute, "")
+	err := util.WaitForDeploymentsReady("meta-dubbo", 10*time.Minute, "")
 	if err != nil {
 		t.Errorf("failed to wait for deployment: %v", err)
 	}
 	//wait 120 seconds for service entries to be created
 	time.Sleep(120 * time.Second)
 
-	serviceEntries, err := util.KubeGetYaml("dubbo", "serviceentry", "", "")
+	serviceEntries, err := util.KubeGetYaml("meta-dubbo", "serviceentry", "", "")
 	if err != nil {
 		t.Errorf("failed to get serviceentry %v", err)
 	}
@@ -48,7 +48,7 @@ func TestCreateServiceEntry(t *testing.T) {
 	}
 
 	serviceEntry, err := util.Shell("kubectl get serviceentry aeraki-org-apache-dubbo-samples-basic-api-demoservice" +
-		" -n dubbo -o=jsonpath='{range .items[*]}{.spec.endpoints}'")
+		" -n meta-dubbo -o=jsonpath='{range .items[*]}{.spec.endpoints}'")
 	if err != nil {
 		t.Errorf("failed to get serviceentry %v", err)
 	}
@@ -60,7 +60,7 @@ func TestCreateServiceEntry(t *testing.T) {
 
 // TestDeleteServiceEntry tests deleting service entry
 func TestDeleteServiceEntry(t *testing.T) {
-	_, err := util.Shell("kubectl delete deploy dubbo-sample-provider-v1 -n dubbo")
+	_, err := util.Shell("kubectl delete deploy dubbo-sample-provider-v1 -n meta-dubbo")
 	if err != nil {
 		t.Errorf("failed to delete deploy %v", err)
 	}
@@ -68,7 +68,7 @@ func TestDeleteServiceEntry(t *testing.T) {
 	//wait 60 seconds for the endpoint to be deleted
 	time.Sleep(120 * time.Second)
 
-	serviceEntry, err := util.Shell("kubectl get serviceentry aeraki-org-apache-dubbo-samples-basic-api-demoservice -n dubbo -o=jsonpath='{range .items[*]}{.spec.endpoints}'")
+	serviceEntry, err := util.Shell("kubectl get serviceentry aeraki-org-apache-dubbo-samples-basic-api-demoservice -n meta-dubbo -o=jsonpath='{range .items[*]}{.spec.endpoints}'")
 	if err != nil {
 		t.Errorf("failed to get serviceentry %v", err)
 	}

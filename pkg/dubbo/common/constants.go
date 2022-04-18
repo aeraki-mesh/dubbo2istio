@@ -15,7 +15,7 @@
 package common
 
 const (
-	dubboPortName         = "tcp-dubbo"
+	dubboPortName         = "tcp-metaprotocol-dubbo"
 	dubbo2istio           = "dubbo2istio"
 	registryNameLabel     = "registryName"
 	defaultServiceAccount = "default"

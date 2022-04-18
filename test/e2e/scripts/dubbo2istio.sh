@@ -14,5 +14,5 @@ elif [ "$1" == nacos ]; then
   envsubst < $BASEDIR/../common/dubbo2istio-etcd.yaml > dubbo2istio.yaml
 fi
 
-kubectl create ns dubbo
-kubectl apply -f dubbo2istio.yaml -n dubbo
+kubectl create ns meta-dubbo
+kubectl apply -f dubbo2istio.yaml -n meta-dubbo

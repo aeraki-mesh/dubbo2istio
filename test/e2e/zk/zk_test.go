@@ -31,10 +31,10 @@ func TestMain(m *testing.M) {
 }
 
 func setup() {
-	util.KubeApply("dubbo", "../../../demo/k8s/aeraki-bootstrap-config.yaml", "")
-	util.KubeApply("dubbo", "../../../demo/k8s/zk/zookeeper.yaml", "")
+	util.KubeApply("meta-dubbo", "../../../demo/k8s/aeraki-bootstrap-config.yaml", "")
+	util.KubeApply("meta-dubbo", "../../../demo/k8s/zk/zookeeper.yaml", "")
 	util.LabelNamespace("dubbo", "istio-injection=enabled", "")
-	util.KubeApply("dubbo", "../../../demo/k8s/zk/dubbo-example.yaml", "")
+	util.KubeApply("meta-dubbo", "../../../demo/k8s/zk/dubbo-example.yaml", "")
 }
 
 func shutdown() {
