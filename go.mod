@@ -1,8 +1,8 @@
-module github.com/aeraki-framework/double2istio
+module github.com/aeraki-mesh/double2istio
 
 go 1.14
 
-replace github.com/nacos-group/nacos-sdk-go => github.com/aeraki-framework/nacos-sdk-go v0.0.0-20210611053344-ca0530b4c111
+replace github.com/nacos-group/nacos-sdk-go => github.com/aeraki-mesh/nacos-sdk-go v0.0.0-20210611053344-ca0530b4c111
 
 require (
 	github.com/go-zookeeper/zk v1.0.2

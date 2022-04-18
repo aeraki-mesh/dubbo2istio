@@ -12,6 +12,9 @@ spec:
   replicas: 1
   template:
     metadata:
+      annotations:
+        sidecar.istio.io/bootstrapOverride: aeraki-bootstrap-config
+        sidecar.istio.io/proxyImage: aeraki/meta-protocol-proxy:1.0.2
       labels:
         app: dubbo-sample-provider
         version: v1
@@ -57,6 +60,9 @@ spec:
   replicas: 1
   template:
     metadata:
+      annotations:
+        sidecar.istio.io/bootstrapOverride: aeraki-bootstrap-config
+        sidecar.istio.io/proxyImage: aeraki/meta-protocol-proxy:1.0.2
       labels:
         app: dubbo-sample-provider
         version: v2
@@ -107,6 +113,9 @@ spec:
   replicas: 1
   template:
     metadata:
+      annotations:
+        sidecar.istio.io/bootstrapOverride: aeraki-bootstrap-config
+        sidecar.istio.io/proxyImage: aeraki/meta-protocol-proxy:1.0.2
       labels:
         app: dubbo-sample-consumer
         istio-locality: bj.800002
