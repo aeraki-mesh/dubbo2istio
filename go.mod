@@ -1,4 +1,4 @@
-module github.com/aeraki-mesh/double2istio
+module github.com/aeraki-mesh/dubbo2istio
 
 go 1.14
 
