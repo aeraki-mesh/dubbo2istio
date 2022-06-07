@@ -15,6 +15,7 @@
 package common
 
 import (
+	"net/url"
 	"regexp"
 	"strings"
 
@@ -72,7 +73,11 @@ func ConvertServiceEntry(registryName string,
 		}
 
 		// What is this for? Authorization?
-		selector := dubboAttributes["aeraki_meta_workload_selector"]
+		unDecodeSelector := dubboAttributes["aeraki_meta_workload_selector"]
+		selector, err := url.QueryUnescape(unDecodeSelector)
+		if err != nil {
+			log.Errorf("QueryUnescape aeraki_meta_workload_selector parameter for provider %v, get err %v", dubboAttributes, err)
+		}
 		if selector == "" {
 			log.Errorf("can't find aeraki_meta_workload_selector parameter for provider %v,  ", dubboAttributes)
 		}
