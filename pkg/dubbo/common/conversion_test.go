@@ -15,6 +15,7 @@
 package common
 
 import (
+	"net/url"
 	"testing"
 )
 
@@ -44,6 +45,29 @@ func Test_isValidLabel(t *testing.T) {
 		t.Run("", func(t *testing.T) {
 			if got := isInvalidLabel(tt.key, tt.value); got != tt.want {
 				t.Errorf("isValidLabel() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_iQueryUnescape(t *testing.T) {
+	tests := []struct {
+		testString string
+		wantString string
+	}{
+		{
+			testString: "app%3A+dubbo-consumer",
+			wantString: "app: dubbo-consumer",
+		},
+		{
+			testString: "app: dubbo-consumer",
+			wantString: "app: dubbo-consumer",
+		},
+	}
+	for _, tt := range tests {
+		t.Run("", func(t *testing.T) {
+			if got, _ := url.QueryUnescape(tt.testString); got != tt.wantString {
+				t.Errorf("QueryUnescape() = %v, want %v", got, tt.wantString)
 			}
 		})
 	}
