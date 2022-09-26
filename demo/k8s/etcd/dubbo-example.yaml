@@ -25,7 +25,7 @@ spec:
           imagePullPolicy: Always
           env:
             - name: REGISTRY_ADDR
-              value: zookeeper://zookeeper:2181
+              value: etcd3://etcd:2379
             - name: REGISTER
               value: "true"
             - name: AERAKI_META_APP_NAMESPACE
@@ -73,7 +73,7 @@ spec:
           imagePullPolicy: Always
           env:
             - name: REGISTRY_ADDR
-              value: zookeeper://zookeeper:2181
+              value: etcd3://etcd:2379
             - name: REGISTER
               value: "true"
             - name: AERAKI_META_APP_NAMESPACE
@@ -121,7 +121,7 @@ spec:
           image: aeraki/dubbo-sample-second-provider
           env:
             - name: REGISTRY_ADDR
-              value: zookeeper://zookeeper:2181
+              value: etcd3://etcd:2379
             - name: REGISTER
               value: "true"
             - name: AERAKI_META_APP_NAMESPACE
