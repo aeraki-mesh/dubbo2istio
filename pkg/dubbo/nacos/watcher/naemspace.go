@@ -15,6 +15,7 @@
 package watcher
 
 import (
+	"strings"
 	"time"
 
 	"github.com/aeraki-mesh/dubbo2istio/pkg/dubbo/common"
@@ -72,9 +73,17 @@ func (w *NamespaceWatcher) Run(stop <-chan struct{}) {
 								log.Errorf("failed to get notification: %v", err)
 							}
 							log.Infof("service %s changed: %v", catalogService.Name, len(services))
+							// filtered config sl.mesh=enable services
+							filteredServices := make([]nacosmodel.SubscribeService, 0)
+							for _, service := range services {
+								s := service.Metadata["sl.mesh"]
+								if strings.EqualFold(s, "enabled") {
+									filteredServices = append(filteredServices, service)
+								}
+							}
 							erviceEntries, err := model.ConvertDubboServices(w.namespace,
 								catalogService.GroupName,
-								services)
+								filteredServices)
 							if err != nil {
 								log.Errorf("failed to convert dubbo service: %v", err)
 							}
