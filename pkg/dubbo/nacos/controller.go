@@ -15,6 +15,7 @@
 package nacos
 
 import (
+	"strings"
 	"sync"
 	"time"
 
@@ -89,6 +90,14 @@ func (c *Controller) watchService(stop <-chan struct{}) {
 	for {
 		select {
 		case services := <-c.eventChan:
+			// filtered config sl.mesh=enable services
+			filteredServices := make([]common.DubboServiceInstance, 0)
+			for _, service := range services {
+				s := service.Metadata["sl.mesh"]
+				if strings.EqualFold(s, "enabled") {
+					filteredServices = append(filteredServices, service)
+				}
+			}
 			c.mutex.Lock()
 			changedServices = append(changedServices, services...)
 			c.mutex.Unlock()
