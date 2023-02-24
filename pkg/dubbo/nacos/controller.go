@@ -83,6 +83,7 @@ func (c *Controller) watchService(stop <-chan struct{}) {
 		for _, new := range serviceEntries {
 			common.SyncServices2IstioUntilMaxRetries(new, c.registryName, c.ic)
 		}
+		changedServices = []common.DubboServiceInstance{}
 	}
 	debouncer := debounce.New(debounceAfter, debounceMax, callback, stop)
 
